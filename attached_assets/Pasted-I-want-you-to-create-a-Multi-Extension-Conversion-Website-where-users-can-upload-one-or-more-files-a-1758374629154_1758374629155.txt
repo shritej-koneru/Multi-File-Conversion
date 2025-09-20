@@ -1,0 +1,111 @@
+I want you to create a Multi Extension Conversion Website where users can upload one or more files and convert them into different formats. Please follow these requirements:
+
+🎯 Functionality
+
+File Upload
+
+Support drag & drop and manual file selection.
+
+Show uploaded files in a list with their names and extensions.
+
+Conversion Options
+
+Detect the file type(s) and display available conversion formats dynamically.
+
+If one file is uploaded → show all possible conversions.
+
+If multiple files of the same type are uploaded → show conversions for that type, and apply to all.
+
+If multiple files of different types are uploaded → only show common supported conversions.
+
+Conversion Processing
+
+After selecting output format(s), users click Convert.
+
+The backend converts files in the background and prepares results.
+
+If multiple files → return a ZIP file.
+
+If single file → return the converted file directly.
+
+Show a progress bar or loader while processing.
+
+Download
+
+Provide a download link once conversion is complete.
+
+Use temporary, encrypted file URLs that auto-expire.
+
+⚙️ Tech Stack
+
+Frontend: HTML, CSS, JavaScript (clean UI, responsive, student-friendly).
+
+Backend: Node.js + Express OR Python Flask (choose whichever is simpler).
+
+File Conversion:
+
+Documents → Use LibreOffice CLI / unoconv
+
+Images → Use Pillow / Sharp
+
+Videos & Audio → Use FFmpeg
+
+Archives → Use built-in zipfile (Python) or archiver (Node.js)
+
+🎨 UI/UX
+
+Clean design with a color palette:
+
+#8ecae6, #219ebc, #023047, #FFB703, #FB8500
+
+Simple card-based layout showing uploaded files.
+
+Buttons: Upload, Convert, Download.
+
+Progress loader animation during conversion.
+
+🔒 Security
+
+Sanitize and validate uploaded files.
+
+Limit file size (e.g., max 50MB per file).
+
+Auto-delete files from server after conversion (temporary storage).
+
+📂 Project Structure
+multi-converter/
+├── public/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── server.js  (or app.py if Flask)
+├── converters/
+│   ├── document.js
+│   ├── image.js
+│   ├── audio.js
+│   └── video.js
+└── uploads/
+
+✅ Deliverables
+
+Full working code for frontend + backend
+
+Conversion logic implemented
+
+Instructions to run locally (npm install && npm start or python app.py)
+
+Temporary storage cleanup logic
+
+Example supported conversions:
+
+.docx ↔ .pdf
+
+.pptx → .pdf
+
+.png, .jpg ↔ .pdf
+
+.mp4 → .mp3
+
+.csv ↔ .xlsx
+
+⚡ Please generate the entire working codebase with comments, and ensure it’s modular so I can easily add more converters later.
