@@ -36,7 +36,7 @@ export function ConversionPanel({
 
   // Fetch available formats
   const { data: formats } = useQuery<ConversionFormat[]>({
-    queryKey: ["/api/formats", sessionId],
+    queryKey: [`/api/formats/${sessionId}`],
     enabled: !!sessionId && uploadedFiles.length > 0,
   });
 

@@ -8,6 +8,7 @@ export interface UploadedFile {
   size: number;
   type: string;
   extension: string;
+  savedPath?: string; // Include saved path for conversion
 }
 
 export interface ConversionJob {
