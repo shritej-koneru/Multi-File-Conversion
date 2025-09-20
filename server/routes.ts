@@ -154,6 +154,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           );
 
+          // Verify all files were converted successfully
+          if (convertedFiles.length === 0) {
+            throw new Error("No files were successfully converted");
+          }
+
           let downloadUrl = "";
           if (convertedFiles.length === 1) {
             downloadUrl = `/api/download/${conversion.id}/${convertedFiles[0].convertedName}`;
@@ -168,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateConversionStatus(conversion.id, "completed", 100);
         } catch (error) {
           console.error("Conversion error:", error);
-          await storage.updateConversionStatus(conversion.id, "failed");
+          await storage.updateConversionStatus(conversion.id, "failed", 0);
         }
       });
 
