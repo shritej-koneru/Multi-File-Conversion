@@ -28,7 +28,9 @@ const storage_multer = multer.diskStorage({
     cb(null, sessionDir);
   },
   filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueName = `${randomUUID()}-${file.originalname}`;
+    // Sanitize filename to prevent path traversal
+    const sanitizedOriginalName = path.basename(file.originalname);
+    const uniqueName = `${randomUUID()}-${sanitizedOriginalName}`;
     cb(null, uniqueName);
   },
 });
@@ -83,6 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           size: f.size,
           type: f.type,
           extension: f.extension,
+          savedPath: f.path, // Include actual saved path for conversion
         })),
       });
     } catch (error) {
@@ -128,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: file.size,
         type: file.type,
         extension: file.extension,
-        path: path.join(uploadDir, sessionId, file.name),
+        path: file.savedPath || path.join(uploadDir, sessionId, file.name), // Use actual saved path
       }));
 
       const conversion = await storage.createConversion({
