@@ -52,6 +52,29 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Endpoint to delete uploaded files for a session (called when user leaves)
+  app.post("/api/cleanup-session", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Missing sessionId" });
+      }
+      // Remove uploaded files directory for this session
+      const sessionDir = path.join(uploadDir, sessionId);
+      if (fs.existsSync(sessionDir)) {
+        await fs.remove(sessionDir);
+      }
+      // Remove all conversions for this session
+      const conversions = await storage.getConversionsBySession(sessionId);
+      for (const conv of conversions) {
+        await storage.deleteConversion(conv.id);
+      }
+      res.json({ message: "Session cleaned up" });
+    } catch (error) {
+      console.error("Cleanup session error:", error);
+      res.status(500).json({ message: "Failed to cleanup session" });
+    }
+  });
   const fileConverter = new FileConverter();
 
   // Setup session for tracking uploads

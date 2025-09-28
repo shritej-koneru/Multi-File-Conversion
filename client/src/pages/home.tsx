@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileUpload } from "@/components/file-upload";
 import { ConversionPanel } from "@/components/conversion-panel";
 import { DownloadSection } from "@/components/download-section";
@@ -24,9 +24,26 @@ export interface ConversionJob {
 }
 
 export default function Home() {
+
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
   const [conversionJob, setConversionJob] = useState<ConversionJob | null>(null);
+
+  // Cleanup session on window unload
+  // Only run effect if sessionId is set
+  import { useEffect } from "react";
+  useEffect(() => {
+    if (!sessionId) return;
+    const cleanup = () => {
+      // Use navigator.sendBeacon for reliability
+      const url = "/api/cleanup-session";
+      const data = JSON.stringify({ sessionId });
+      const blob = new Blob([data], { type: "application/json" });
+      navigator.sendBeacon(url, blob);
+    };
+    window.addEventListener("unload", cleanup);
+    return () => window.removeEventListener("unload", cleanup);
+  }, [sessionId]);
 
   const handleFilesUploaded = (files: UploadedFile[], sessionId: string) => {
     setUploadedFiles(files);
