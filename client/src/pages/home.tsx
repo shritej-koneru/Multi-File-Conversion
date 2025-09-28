@@ -31,7 +31,6 @@ export default function Home() {
 
   // Cleanup session on window unload
   // Only run effect if sessionId is set
-  import { useEffect } from "react";
   useEffect(() => {
     if (!sessionId) return;
     const cleanup = () => {

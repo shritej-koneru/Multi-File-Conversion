@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "build",
+            "group": "build",
+            "label": "build",
+            "detail": "Build the application"
+        },
+        {
+            "type": "npm",
+            "script": "dev",
+            "group": "build",
+            "label": "dev",
+            "detail": "Run development server",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*Local:.*"
+                }
+            }
+        }
+    ]
+}
