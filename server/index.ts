@@ -1,6 +1,26 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import fs from "fs-extra";
+import path from "path";
+
+async function cleanupUploadsOnStartup(): Promise<void> {
+  try {
+    const uploadsDir = path.join(process.cwd(), "uploads");
+    
+    if (await fs.pathExists(uploadsDir)) {
+      // Remove all contents of uploads directory
+      await fs.emptyDir(uploadsDir);
+      log("🧹 Cleaned up uploads folder on server startup");
+    } else {
+      // Create uploads directory if it doesn't exist
+      await fs.ensureDir(uploadsDir);
+      log("📁 Created uploads directory");
+    }
+  } catch (error) {
+    console.error("❌ Failed to cleanup uploads on startup:", error);
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -37,6 +57,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Clean up uploads folder on server startup
+  await cleanupUploadsOnStartup();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

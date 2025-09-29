@@ -77,14 +77,20 @@ export function ConversionPanel({
     setIsConverting(true);
     
     try {
-      // For simplicity, use the first selected format
-      const targetFormat = selectedFormats[0];
-      
-      const response = await apiRequest("POST", "/api/convert", {
+      let requestBody: any = {
         sessionId,
-        targetFormat,
         files: uploadedFiles,
-      });
+      };
+      
+      // If multiple formats are selected, send them as an array
+      if (selectedFormats.length > 1) {
+        requestBody.targetFormats = selectedFormats;
+      } else {
+        // Single format for backward compatibility
+        requestBody.targetFormat = selectedFormats[0];
+      }
+      
+      const response = await apiRequest("POST", "/api/convert", requestBody);
       
       const { conversionId } = await response.json();
       
@@ -167,7 +173,12 @@ export function ConversionPanel({
               data-testid="button-convert"
             >
               <Wand2 className="mr-2" size={16} />
-              {isConverting || conversionJob?.status === "processing" ? "Converting..." : "Convert Files"}
+              {isConverting || conversionJob?.status === "processing" 
+                ? "Converting..." 
+                : selectedFormats.length > 1 
+                  ? `Convert to ${selectedFormats.length} formats` 
+                  : "Convert Files"
+              }
             </Button>
 
             {/* Progress Section */}

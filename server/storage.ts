@@ -41,20 +41,25 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async createConversion(insertConversion: InsertConversion): Promise<Conversion> {
+  async createConversion(data: {
+    sessionId: string;
+    originalFiles: FileInfo[];
+    targetFormat: string;
+  }): Promise<Conversion> {
     const id = randomUUID();
     const conversion: Conversion = {
       id,
-      sessionId: insertConversion.sessionId,
-      originalFiles: insertConversion.originalFiles,
-      targetFormat: insertConversion.targetFormat,
-      convertedFiles: [],
+      sessionId: data.sessionId,
+      originalFiles: data.originalFiles,
+      targetFormat: data.targetFormat,
       status: "pending",
       progress: 0,
       downloadUrl: null,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      convertedFiles: null,
+      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours
       createdAt: new Date(),
     };
+
     this.conversions.set(id, conversion);
     return conversion;
   }
