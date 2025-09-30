@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+.DS_Store
+
+# Runtime directories
+uploads/*
+!uploads/.gitkeep
+server/public/
+
+# Configuration cache
+vite.config.ts.*
+*.tsbuildinfo
+.local/
+
+# Temporary files
+*.tmp
+*.temp
+*.tar.gz
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Editor files
+.vscode/settings.json
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
