@@ -1,8 +1,41 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import fs from "fs-extra";
 import path from "path";
+
+// Simple logging function
+function log(message: string): void {
+  const timestamp = new Date().toLocaleTimeString();
+  console.log(`${timestamp} [express] ${message}`);
+}
+
+// Production static file serving
+function serveStaticFiles(app: express.Express): void {
+  const staticPath = path.join(process.cwd(), "dist/public");
+  if (fs.existsSync(staticPath)) {
+    // Serve static assets
+    app.use(express.static(staticPath));
+    log(`serving static files from ${staticPath}`);
+    
+    // Serve index.html for all non-API and non-health routes (SPA fallback)
+    app.get("*", (req, res) => {
+      if (!req.path.startsWith("/api") && req.path !== "/health") {
+        res.sendFile(path.join(staticPath, "index.html"));
+      }
+    });
+  } else {
+    log(`WARNING: Static files directory not found: ${staticPath}`);
+    // Fallback for missing static files
+    app.get("/", (req, res) => {
+      res.json({ 
+        error: "Frontend not built", 
+        message: "Run 'npm run build' to build the frontend",
+        staticPath: staticPath,
+        exists: fs.existsSync(staticPath)
+      });
+    });
+  }
+}
 
 async function cleanupUploadsOnStartup(): Promise<void> {
   try {
@@ -70,13 +103,14 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup development or production serving
   if (app.get("env") === "development") {
-    await setupVite(app, server);
+    // Only import dev-server in development to avoid bundling vite in production
+    const { setupDevelopmentServer } = await import("./dev-server");
+    await setupDevelopmentServer(app, server);
   } else {
-    serveStatic(app);
+    // In production, serve static files directly
+    serveStaticFiles(app);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

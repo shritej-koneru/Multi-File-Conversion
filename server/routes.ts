@@ -9,6 +9,35 @@ import { randomUUID } from "crypto";
 import { FileConverter } from "./services/file-converter";
 import { cleanupExpiredFiles, cleanupSession } from "./services/cleanup";
 import archiver from "archiver";
+import { execSync } from "child_process";
+
+// Dependency check functions
+function checkGraphicsMagick(): boolean {
+  try {
+    execSync('gm version', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkImageMagick(): boolean {
+  try {
+    execSync('convert -version', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkFFmpeg(): boolean {
+  try {
+    execSync('ffmpeg -version', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Extend Express Request to include sessionID
 declare module 'express-serve-static-core' {
@@ -53,6 +82,20 @@ const upload = multer({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const fileConverter = new FileConverter();
+
+  // Health check endpoint (moved from "/" to "/health")
+  app.get("/health", (req, res) => {
+    res.json({ 
+      status: "healthy", 
+      message: "Multi-File Conversion Service is running",
+      timestamp: new Date().toISOString(),
+      dependencies: {
+        graphicsMagick: checkGraphicsMagick(),
+        imagemagick: checkImageMagick(),
+        ffmpeg: checkFFmpeg()
+      }
+    });
+  });
 
   // Setup session for tracking uploads
   app.use((req, res, next) => {

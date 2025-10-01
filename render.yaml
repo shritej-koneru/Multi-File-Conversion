@@ -1,0 +1,32 @@
+services:
+  # Docker deployment (recommended)
+  - type: web
+    name: multi-file-conversion-docker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Alternative: Non-Docker deployment
+  # Uncomment this section and comment out the Docker section above if you prefer non-Docker
+  # Note: This requires Render to support apt-get in your environment
+  
+  # - type: web
+  #   name: multi-file-conversion-node
+  #   runtime: node
+  #   plan: starter
+  #   buildCommand: ./install-gm.sh && npm install && npm run build
+  #   startCommand: ./startup.sh npm start
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: PORT
+  #       value: 10000
+  #   healthCheckPath: /
+  #   autoDeploy: true

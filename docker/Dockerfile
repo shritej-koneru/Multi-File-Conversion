@@ -1,0 +1,50 @@
+# Multi-File Conversion Service Dockerfile
+# This Dockerfile includes GraphicsMagick installation for file conversions
+
+FROM node:18-bullseye
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including GraphicsMagick
+RUN apt-get update && apt-get install -y \
+    graphicsmagick \
+    imagemagick \
+    poppler-utils \
+    ghostscript \
+    libgraphicsmagick++-dev \
+    libmagick++-dev \
+    ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (including dev deps needed for build)
+RUN npm ci
+
+# Copy application code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Remove dev dependencies to reduce image size
+RUN npm prune --omit=dev
+
+# Create uploads directory
+RUN mkdir -p uploads
+
+# Expose port
+EXPOSE 10000
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=10000
+
+# Make startup script executable
+RUN chmod +x scripts/startup.sh
+
+# Start the application with dependency checks
+CMD ["./scripts/startup.sh", "npm", "start"]
