@@ -93,7 +93,7 @@ export default function Home() {
               onConversionStarted={handleConversionStarted}
               onConversionUpdated={handleConversionUpdated}
             />
-            
+
             <DownloadSection conversionJob={conversionJob} />
           </div>
         </div>
@@ -101,30 +101,36 @@ export default function Home() {
         {/* Features Section */}
         <section className="mt-16 bg-card rounded-lg border border-border shadow-sm p-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-8">Supported Conversions</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <i className="fas fa-file-word text-3xl text-primary mb-3"></i>
               <h4 className="font-semibold text-foreground mb-2">Documents</h4>
-              <p className="text-sm text-muted-foreground">DOCX, PDF, TXT, RTF</p>
+              <p className="text-sm text-muted-foreground">PDF, DOCX, DOC, TXT, HTML</p>
             </div>
-            
+
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <i className="fas fa-image text-3xl text-accent mb-3"></i>
               <h4 className="font-semibold text-foreground mb-2">Images</h4>
-              <p className="text-sm text-muted-foreground">PNG, JPG, WEBP, PDF</p>
+              <p className="text-sm text-muted-foreground">PNG, JPG, WEBP, AVIF, GIF, BMP, TIFF, SVG, PDF</p>
             </div>
-            
+
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <i className="fas fa-play text-3xl text-warning mb-3"></i>
               <h4 className="font-semibold text-foreground mb-2">Video & Audio</h4>
-              <p className="text-sm text-muted-foreground">MP4, MP3, WAV, AVI</p>
+              <p className="text-sm text-muted-foreground">MP4, MP3, WAV, AVI, MOV, WEBM, OGG, M4A</p>
             </div>
-            
+
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <i className="fas fa-table text-3xl text-secondary mb-3"></i>
               <h4 className="font-semibold text-foreground mb-2">Spreadsheets</h4>
-              <p className="text-sm text-muted-foreground">CSV, XLSX, ODS</p>
+              <p className="text-sm text-muted-foreground">CSV, XLSX, XLS</p>
+            </div>
+
+            <div className="text-center p-4 bg-muted/30 rounded-lg">
+              <i className="fas fa-code text-3xl text-green-500 mb-3"></i>
+              <h4 className="font-semibold text-foreground mb-2">Data Formats</h4>
+              <p className="text-sm text-muted-foreground">JSON, YAML, TOML, XML</p>
             </div>
           </div>
         </section>
