@@ -1,6 +1,6 @@
 # Multi-File Conversion Service 🔄
 
-A powerful, production-ready web service for converting files between multiple formats. Built with React, Express, and automatic GraphicsMagick installation.
+A powerful, production-ready web service for converting files between **40+ formats**. Built with React, Express, and featuring modern format support inspired by ConvertX.
 
 ![Multi-File Conversion Service](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![Docker](https://img.shields.io/badge/Docker-Supported-blue)
@@ -9,9 +9,11 @@ A powerful, production-ready web service for converting files between multiple f
 
 ## ✨ Features
 
-- 🖼️ **Image Conversion**: JPG, PNG, WebP, GIF, TIFF, BMP ↔ PDF and other formats
-- 📄 **Document Processing**: PDF ↔ Images, Text extraction, Office documents
-- 🎵 **Media Support**: Audio (MP3, WAV) and Video (MP4, AVI) conversion with FFmpeg
+- 🖼️ **Modern Image Formats**: JPG, PNG, WebP, **AVIF**, GIF, TIFF, BMP, SVG ↔ PDF and other formats
+- 📊 **Data Format Conversions**: **NEW!** JSON ↔ YAML ↔ TOML ↔ XML bidirectional conversion
+- 📄 **Document Processing**: PDF ↔ Images, Text extraction, Office documents (DOCX, DOC, HTML)
+- 📑 **Spreadsheets**: XLSX, XLS, CSV with JSON/YAML/XML export capability
+- 🎵 **Media Support**: Audio (MP3, WAV, OGG, M4A) and Video (MP4, AVI, MOV, WebM) conversion with FFmpeg
 - 📦 **Archive Creation**: ZIP and TAR archive support
 - 🚀 **Auto-Installation**: GraphicsMagick and dependencies installed automatically  
 - 🐳 **Docker Ready**: One-command deployment with all dependencies included
