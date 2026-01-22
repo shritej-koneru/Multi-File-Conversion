@@ -1,10 +1,11 @@
 services:
-  # Docker deployment (recommended)
+  # Native Node.js deployment (recommended - simpler and faster)
   - type: web
-    name: multi-file-conversion-docker
-    runtime: docker
+    name: multi-file-conversion
+    runtime: node
     plan: starter
-    dockerfilePath: ./Dockerfile
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -12,21 +13,17 @@ services:
         value: 10000
     healthCheckPath: /health
     autoDeploy: true
-
-  # Alternative: Non-Docker deployment
-  # Uncomment this section and comment out the Docker section above if you prefer non-Docker
-  # Note: This requires Render to support apt-get in your environment
-  
+    
+  # Docker deployment (commented out - can uncomment if needed)
   # - type: web
-  #   name: multi-file-conversion-node
-  #   runtime: node
+  #   name: multi-file-conversion-docker
+  #   runtime: docker
   #   plan: starter
-  #   buildCommand: ./install-gm.sh && npm install && npm run build
-  #   startCommand: ./startup.sh npm start
+  #   dockerfilePath: ./Dockerfile
   #   envVars:
   #     - key: NODE_ENV
   #       value: production
   #     - key: PORT
   #       value: 10000
-  #   healthCheckPath: /
+  #   healthCheckPath: /health
   #   autoDeploy: true
