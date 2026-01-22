@@ -145,6 +145,9 @@ export default function Home() {
               <span className="font-bold text-foreground">ConvertHub</span>
             </div>
             <p className="text-muted-foreground text-sm">Fast, secure, and reliable file conversion</p>
+            <p className="text-muted-foreground text-sm mt-2">
+              Made with ❤️ by <a href="https://github.com/shritej-koneru" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">Koneru Shritej</a>
+            </p>
             <div className="flex justify-center space-x-6 mt-4 text-sm">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>

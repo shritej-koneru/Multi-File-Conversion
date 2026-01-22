@@ -1,8 +1,17 @@
-# Supported Conversions 🔄## Currently Supported Conversions
+# Supported Conversions 🔄
 
+**40+ File Formats Supported** | **ConvertX-Inspired Modern Format Support**
 
+## Recently Added Features ✨
+- **AVIF Image Format**: Next-generation image compression (50% better than JPEG)
+- **Data Format Conversions**: JSON ↔ YAML ↔ TOML ↔ XML bidirectional conversion
+- **CSV Export**: Export CSV to JSON, YAML, and XML formats
 
-Complete matrix of all supported file formats and conversion possibilities.### Image Formats ✅
+## Currently Supported Conversions
+
+Complete matrix of all supported file formats and conversion possibilities.
+
+### Image Formats ✅
 
 | From         | To                  | Use Case                                      | Status    |
 
