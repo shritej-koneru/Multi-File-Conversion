@@ -21,8 +21,8 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including dev deps needed for build)
-RUN npm ci
+# Install ALL dependencies (using npm install for better compatibility)
+RUN npm install
 
 # Copy application code
 COPY . .
