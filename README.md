@@ -58,13 +58,17 @@ npm run dev
 ## 🎯 Supported Formats
 
 ### Images
-**JPG, PNG, GIF, WebP, BMP, TIFF, SVG** → **JPG, PNG, WebP, GIF, BMP, TIFF, PDF**
+**JPG, PNG, GIF, WebP, BMP, TIFF, SVG, AVIF** → **JPG, PNG, WebP, GIF, BMP, TIFF, AVIF, PDF**
 
 ### Documents  
 **PDF, DOCX, DOC, TXT, HTML** → **PDF, Images (JPG/PNG), TXT, HTML**
 
 ### Spreadsheets
-**XLSX, XLS, CSV** → **CSV, XLSX, PDF, HTML**
+**XLSX, XLS, CSV** → **CSV, XLSX, PDF, HTML, JSON, YAML, XML**
+
+### Data Formats
+**JSON, YAML, TOML, XML** ↔ **JSON, YAML, TOML, XML**  
+**CSV** → **JSON, YAML, XML**
 
 ### Media (Docker only)
 **MP3, WAV, OGG, M4A** ↔ **MP3, WAV, OGG, M4A**  

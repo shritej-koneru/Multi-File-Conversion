@@ -12,9 +12,9 @@ Complete matrix of all supported file formats and conversion possibilities.### I
 
 ### Supported Formats| .jpg, .jpeg  | .png, .webp, .gif, .tiff | Image format conversion              | ✅ Active |
 
-**Input**: JPG, JPEG, PNG, GIF, WebP, BMP, TIFF, TIF, SVG  | .png         | .jpg, .webp, .gif, .tiff | Image format conversion              | ✅ Active |
+**Input**: JPG, JPEG, PNG, GIF, WebP, BMP, TIFF, TIF, SVG, AVIF  | .png         | .jpg, .webp, .gif, .tiff | Image format conversion              | ✅ Active |
 
-**Output**: JPG, PNG, WebP, GIF, BMP, TIFF, PDF| .webp        | .jpg, .png, .gif, .tiff  | Compatibility with older browsers    | ✅ Active |
+**Output**: JPG, PNG, WebP, GIF, BMP, TIFF, AVIF, PDF| .webp        | .jpg, .png, .gif, .tiff  | Compatibility with older browsers    | ✅ Active |
 
 | .bmp, .tiff  | .jpg, .png, .webp, .gif  | Modern format conversion             | ✅ Active |
 
@@ -86,9 +86,18 @@ Complete matrix of all supported file formats and conversion possibilities.### I
 
 | DOCX, DOC | HTML | Good | Web-compatible output || .zip         | .tar                | Unix compatibility                            | ✅ Active |
 
+### Data Formats ✅
+
+| From         | To                  | Use Case                                      | Status    |
+|--------------|---------------------|-----------------------------------------------|-----------|  
+| .json        | .yaml, .toml, .xml  | Config file format conversion                 | ✅ Active |
+| .yaml, .yml  | .json, .toml, .xml  | Data serialization format conversion          | ✅ Active |
+| .toml        | .json, .yaml, .xml  | Configuration file conversion                 | ✅ Active |
+| .xml         | .json, .yaml, .toml | Modern format conversion                      | ✅ Active |
+| .csv         | .json, .yaml, .xml  | Data to structured format                     | ✅ Active |
 
 
-### Text Formats## Planned Future Conversions
+## Planned Future Conversions
 
 | From | To | Quality | Notes |
 
