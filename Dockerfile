@@ -43,8 +43,5 @@ EXPOSE 10000
 ENV NODE_ENV=production
 ENV PORT=10000
 
-# Make startup script executable
-RUN chmod +x startup.sh
-
-# Start the application with dependency checks
-CMD ["./startup.sh", "npm", "start"]
+# Start the application directly with node
+CMD ["node", "dist/index.js"]
