@@ -146,7 +146,7 @@ export default function Home() {
             </div>
             <p className="text-muted-foreground text-sm">Fast, secure, and reliable file conversion</p>
             <p className="text-muted-foreground text-sm mt-2">
-              Made with ❤️ by <a href="https://github.com/shritej-koneru" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">Koneru Shritej</a>
+              Made with ❤️ by <a href="https://portfolio-two-tau-92.vercel.app" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">Koneru Shritej</a>
             </p>
             <div className="flex justify-center space-x-6 mt-4 text-sm">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
