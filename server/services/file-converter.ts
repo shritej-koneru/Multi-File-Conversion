@@ -1087,16 +1087,22 @@ export class FileConverter {
         let soffice = 'soffice';
 
         if (process.platform === 'win32') {
-          // Check common Windows installation paths
-          const commonPaths = [
-            'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
-            'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
-          ];
+          // Check for custom/portable LibreOffice path from environment variable
+          if (process.env.LIBREOFFICE_PATH && fs.existsSync(process.env.LIBREOFFICE_PATH)) {
+            soffice = `"${process.env.LIBREOFFICE_PATH}"`;
+            console.log(`Using LibreOffice from custom path: ${process.env.LIBREOFFICE_PATH}`);
+          } else {
+            // Check common Windows installation paths
+            const commonPaths = [
+              'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+              'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+            ];
 
-          for (const sofficePath of commonPaths) {
-            if (fs.existsSync(sofficePath)) {
-              soffice = `"${sofficePath}"`;
-              break;
+            for (const sofficePath of commonPaths) {
+              if (fs.existsSync(sofficePath)) {
+                soffice = `"${sofficePath}"`;
+                break;
+              }
             }
           }
         }
