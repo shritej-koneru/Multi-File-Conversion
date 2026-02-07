@@ -1012,12 +1012,17 @@ export class FileConverter {
         `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Pandoc\\pandoc.exe`,
       ];
 
+      console.log('🔍 Searching for Pandoc in common Windows locations...');
       for (const pandocPath of commonPaths) {
+        console.log(`  Checking: ${pandocPath}`);
         if (fs.existsSync(pandocPath)) {
-          console.log(`Found Pandoc at: ${pandocPath}`);
+          console.log(`  ✅ Found Pandoc at: ${pandocPath}`);
           return pandocPath;
+        } else {
+          console.log(`  ❌ Not found at: ${pandocPath}`);
         }
       }
+      console.log('⚠️  Pandoc not found in any common location');
     }
 
     return null;
@@ -1059,14 +1064,14 @@ export class FileConverter {
     }
   }
 
-  // Pandoc conversion helper
+  // Pandoc conversion helper - uses HTML intermediate to avoid LaTeX dependency
   private async convertWithPandoc(
     inputPath: string,
     outputPath: string,
     outputFormat: string,
     fromFormat?: string
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         // Get Pandoc executable path (auto-detect if not in PATH)
         const pandocExe = this.getPandocPath();
@@ -1075,27 +1080,144 @@ export class FileConverter {
           return;
         }
 
-        // Build pandoc command with proper formatting preservation
         const formatFlag = fromFormat ? `-f ${fromFormat}` : '';
+
+        // For PDF output from markdown, convert to HTML first then to PDF
+        // This avoids requiring LaTeX (xelatex/pdflatex) installation
+        if (outputFormat === 'pdf' && fromFormat === 'markdown') {
+          try {
+            console.log('Converting Markdown → HTML → PDF (no LaTeX required)...');
+
+            // Step 1: Markdown to HTML with Pandoc (preserves formatting)
+            const tempHtmlPath = inputPath.replace(/\.[^.]+$/, '.temp.html');
+            const htmlCommand = [
+              `"${pandocExe}"`,
+              `"${inputPath}"`,
+              '-o', `"${tempHtmlPath}"`,
+              '-f', 'markdown',
+              '-t', 'html',
+              '--standalone',
+              '--toc',
+              '--syntax-definition=tango',
+              '--css=data:text/css,body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;line-height:1.6;} code{background:#f4f4f4;padding:2px 6px;border-radius:3px;} pre{background:#f4f4f4;padding:15px;border-radius:5px;overflow-x:auto;}'
+            ].join(' ');
+
+            console.log(`Executing Pandoc (Markdown → HTML): ${htmlCommand}`);
+            execSync(htmlCommand, { timeout: 30000 });
+
+            // Step 2: Use pdf-lib to convert HTML content to PDF
+            if (await fs.pathExists(tempHtmlPath)) {
+              const htmlContent = await fs.readFile(tempHtmlPath, 'utf-8');
+
+              // Create a simple PDF from the HTML text content
+              // Strip HTML tags but preserve structure
+              let textContent = htmlContent
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<h1[^>]*>/gi, '\n\n=== ')
+                .replace(/<\/h1>/gi, ' ===\n')
+                .replace(/<h2[^>]*>/gi, '\n\n## ')
+                .replace(/<\/h2>/gi, '\n')
+                .replace(/<h3[^>]*>/gi, '\n\n### ')
+                .replace(/<\/h3>/gi, '\n')
+                .replace(/<pre[^>]*><code[^>]*>/gi, '\n```\n')
+                .replace(/<\/code><\/pre>/gi, '\n```\n')
+                .replace(/<code[^>]*>/gi, '`')
+                .replace(/<\/code>/gi, '`')
+                .replace(/<strong[^>]*>/gi, '**')
+                .replace(/<\/strong>/gi, '**')
+                .replace(/<em[^>]*>/gi, '*')
+                .replace(/<\/em>/gi, '*')
+                .replace(/<p[^>]*>/gi, '\n')
+                .replace(/<\/p>/gi, '\n')
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<li[^>]*>/gi, '\n• ')
+                .replace(/<\/li>/gi, '')
+                .replace(/<[^>]+>/g, '')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '\"')
+                .replace(/\n\s*\n\s*\n/g, '\n\n')
+                .trim();
+
+              // Create PDF with better formatting
+              const pdfDoc = await PDFDocument.create();
+              const pageWidth = 612;
+              const pageHeight = 792;
+              const margin = 50;
+              const maxWidth = pageWidth - (2 * margin);
+              const fontSize = 11;
+              const lineHeight = fontSize * 1.4;
+
+              const words = textContent.split(/\s+/);
+              const lines: string[] = [];
+              let currentLine = '';
+
+              for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                const estimatedWidth = testLine.length * (fontSize * 0.5);
+
+                if (estimatedWidth > maxWidth && currentLine) {
+                  lines.push(currentLine);
+                  currentLine = word;
+                } else {
+                  currentLine = testLine;
+                }
+              }
+              if (currentLine) lines.push(currentLine);
+
+              let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+              let yPosition = pageHeight - margin;
+
+              for (const line of lines) {
+                if (yPosition < margin) {
+                  currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+                  yPosition = pageHeight - margin;
+                }
+
+                try {
+                  currentPage.drawText(line, {
+                    x: margin,
+                    y: yPosition,
+                    size: fontSize,
+                    color: rgb(0, 0, 0),
+                  });
+                } catch (drawError) {
+                  console.error(`Error drawing line:`, (drawError as Error).message);
+                  continue;
+                }
+
+                yPosition -= lineHeight;
+              }
+
+              const pdfBytes = await pdfDoc.save();
+              await fs.writeFile(outputPath, pdfBytes);
+              await fs.remove(tempHtmlPath);
+
+              console.log('✅ Markdown PDF conversion successful (HTML intermediate)');
+              resolve();
+              return;
+            }
+          } catch (htmlError) {
+            console.log(`HTML intermediate conversion failed: ${(htmlError as Error).message}`);
+            // Fall through to try direct conversion
+          }
+        }
+
+        // Original direct conversion (for non-PDF or non-markdown conversions)
         const command = [
           `"${pandocExe}"`,
           `"${inputPath}"`,
           '-o', `"${outputPath}"`,
           formatFlag,
-          '--standalone',
-          '--pdf-engine=xelatex',
-          '--variable', 'geometry:margin=1in',
-          '--variable', 'fontsize=12pt',
-          '--variable', 'linestretch=1.5',
-          '--preserve-tabs',
-          '--toc',
-          '--highlight-style=tango'
+          '--standalone'
         ].filter(Boolean).join(' ');
 
         console.log(`Executing Pandoc: ${command}`);
-        execSync(command, { timeout: 30000 }); // 30 second timeout
+        execSync(command, { timeout: 30000 });
 
-        // Verify output file was created
         if (!fs.existsSync(outputPath)) {
           reject(new Error('Pandoc conversion completed but output file not found'));
           return;
