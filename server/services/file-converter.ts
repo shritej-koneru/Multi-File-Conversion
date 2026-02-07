@@ -13,6 +13,7 @@ import { fromPath } from "pdf2pic";
 import yaml from "js-yaml";
 import toml from "@iarna/toml";
 import { XMLParser, XMLBuilder } from "fast-xml-parser";
+import { marked } from "marked"; // Required for Markdown support
 
 export class FileConverter {
   async convertFiles(
@@ -36,7 +37,6 @@ export class FileConverter {
         }
       } catch (error) {
         console.error(`Failed to convert ${file.name}:`, error);
-        // Continue with other files
       }
     }
 
@@ -44,7 +44,6 @@ export class FileConverter {
     return convertedFiles;
   }
 
-  // New method to handle multiple target formats
   async convertFilesToMultipleFormats(
     files: FileInfo[],
     targetFormats: string[],
@@ -58,7 +57,6 @@ export class FileConverter {
     for (const file of files) {
       for (const format of targetFormats) {
         try {
-          // Check if this file can be converted to this format
           const supportedFormats = this.getSupportedConversions(file.extension);
           if (supportedFormats.includes(format)) {
             const converted = await this.convertSingleFile(file, format, sessionId);
@@ -90,13 +88,11 @@ export class FileConverter {
     const outputName = `${baseName}.${targetFormat}`;
     const outputPath = path.join(outputDir, outputName);
 
-    // Check if file exists
     if (!fs.existsSync(inputPath)) {
       throw new Error(`Input file not found: ${inputPath}`);
     }
 
     switch (targetFormat.toLowerCase()) {
-      // Image conversions
       case "jpg":
       case "jpeg":
         return await this.convertToJpeg(inputPath, outputPath, file);
@@ -115,22 +111,16 @@ export class FileConverter {
         return await this.convertToAvif(inputPath, outputPath, file);
       case "pdf":
         return await this.convertToPdf(inputPath, outputPath, file);
-
-      // Document conversions
       case "txt":
         return await this.convertToTxt(inputPath, outputPath, file);
       case "docx":
         return await this.convertToDocx(inputPath, outputPath, file);
       case "html":
         return await this.convertToHtml(inputPath, outputPath, file);
-
-      // Spreadsheet conversions
       case "xlsx":
         return await this.convertToXlsx(inputPath, outputPath, file);
       case "csv":
         return await this.convertToCsv(inputPath, outputPath, file);
-
-      // Data format conversions
       case "json":
         return await this.convertToJson(inputPath, outputPath, file);
       case "yaml":
@@ -140,8 +130,6 @@ export class FileConverter {
         return await this.convertToToml(inputPath, outputPath, file);
       case "xml":
         return await this.convertToXml(inputPath, outputPath, file);
-
-      // Audio conversions
       case "mp3":
         return await this.convertToMp3(inputPath, outputPath, file);
       case "wav":
@@ -150,8 +138,6 @@ export class FileConverter {
         return await this.convertToOgg(inputPath, outputPath, file);
       case "m4a":
         return await this.convertToM4a(inputPath, outputPath, file);
-
-      // Video conversions
       case "mp4":
         return await this.convertToMp4(inputPath, outputPath, file);
       case "avi":
@@ -160,13 +146,10 @@ export class FileConverter {
         return await this.convertToWebm(inputPath, outputPath, file);
       case "mov":
         return await this.convertToMov(inputPath, outputPath, file);
-
-      // Archive conversions
       case "zip":
         return await this.convertToZip(inputPath, outputPath, file);
       case "tar":
         return await this.convertToTar(inputPath, outputPath, file);
-
       default:
         throw new Error(`Unsupported target format: ${targetFormat}`);
     }
@@ -174,25 +157,9 @@ export class FileConverter {
 
   private async convertToJpeg(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+      await sharp(inputPath).jpeg({ quality: 85 }).toFile(outputPath);
     } else if (file.extension.toLowerCase() === '.pdf') {
-      // Convert PDF to JPEG using pdf2pic
       try {
-        console.log(`Starting PDF to JPEG conversion: ${inputPath} -> ${outputPath}`);
-
-        // Check if input file exists
-        if (!await fs.pathExists(inputPath)) {
-          throw new Error(`Input PDF file does not exist: ${inputPath}`);
-        }
-
-        // Clean up any existing output file to prevent conflicts
-        if (await fs.pathExists(outputPath)) {
-          await fs.remove(outputPath);
-          console.log(`Removed existing output file: ${outputPath}`);
-        }
-
         const convert = fromPath(inputPath, {
           density: 150,
           saveFilename: path.parse(outputPath).name,
@@ -201,89 +168,30 @@ export class FileConverter {
           width: 2000,
           height: 2000
         });
-
-        console.log('Attempting PDF conversion with pdf2pic...');
-        const result = await convert(1); // Convert first page
-        console.log('pdf2pic result:', result);
-
-        // pdf2pic creates files with .1.jpg extension, so we need to check for that
+        const result = await convert(1);
         const actualOutputPath = result.path;
-
         if (actualOutputPath && await fs.pathExists(actualOutputPath)) {
-          // Move the file to the expected location if it's different
           if (actualOutputPath !== outputPath) {
-            // Ensure the target file doesn't exist before moving
-            if (await fs.pathExists(outputPath)) {
-              await fs.remove(outputPath);
-              console.log(`Removed existing target file: ${outputPath}`);
-            }
-            await fs.move(actualOutputPath, outputPath);
-            console.log(`Moved ${actualOutputPath} to ${outputPath}`);
+            await fs.move(actualOutputPath, outputPath, { overwrite: true });
           }
-          console.log('PDF to JPEG conversion successful');
         } else {
-          console.error(`PDF conversion failed - output file not found: ${actualOutputPath}`);
-
-          // Try fallback with direct ImageMagick command
-          console.log('Attempting fallback conversion with ImageMagick...');
-          const { execSync } = await import('child_process');
           const escapedInput = inputPath.replace(/'/g, "'\"'\"'");
           const escapedOutput = outputPath.replace(/'/g, "'\"'\"'");
-
-          try {
-            execSync(`convert '${escapedInput}[0]' -density 150 -quality 85 '${escapedOutput}'`, {
-              timeout: 30000, // 30 second timeout
-              stdio: 'pipe'
-            });
-
-            if (!await fs.pathExists(outputPath)) {
-              throw new Error("ImageMagick fallback also failed to create output file");
-            }
-
-            console.log('ImageMagick fallback conversion successful');
-          } catch (magickError) {
-            console.error('ImageMagick fallback failed:', magickError);
-            throw new Error(`Both pdf2pic and ImageMagick conversion failed. ImageMagick error: ${(magickError as Error).message}`);
-          }
+          execSync(`convert '${escapedInput}[0]' -density 150 -quality 85 '${escapedOutput}'`, { timeout: 30000 });
         }
       } catch (error) {
-        console.error('PDF to JPEG conversion failed:', error);
-        throw new Error(`Failed to convert PDF to JPEG: ${(error as Error).message}`);
+        throw new Error(`PDF to JPEG failed: ${(error as Error).message}`);
       }
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to JPEG`);
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToPng(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .png()
-        .toFile(outputPath);
+      await sharp(inputPath).png().toFile(outputPath);
     } else if (file.extension.toLowerCase() === '.pdf') {
-      // Convert PDF to PNG using pdf2pic
       try {
-        console.log(`Starting PDF to PNG conversion: ${inputPath} -> ${outputPath}`);
-
-        // Check if input file exists
-        if (!await fs.pathExists(inputPath)) {
-          throw new Error(`Input PDF file does not exist: ${inputPath}`);
-        }
-
-        // Clean up any existing output file to prevent conflicts
-        if (await fs.pathExists(outputPath)) {
-          await fs.remove(outputPath);
-          console.log(`Removed existing output file: ${outputPath}`);
-        }
-
         const convert = fromPath(inputPath, {
           density: 150,
           saveFilename: path.parse(outputPath).name,
@@ -292,682 +200,203 @@ export class FileConverter {
           width: 2000,
           height: 2000
         });
-
-        console.log('Attempting PDF conversion with pdf2pic...');
-        const result = await convert(1); // Convert first page
-        console.log('pdf2pic result:', result);
-
-        // pdf2pic creates files with .1.png extension, so we need to check for that
-        const actualOutputPath = result.path;
-
-        if (actualOutputPath && await fs.pathExists(actualOutputPath)) {
-          // Move the file to the expected location if it's different
-          if (actualOutputPath !== outputPath) {
-            // Ensure the target file doesn't exist before moving
-            if (await fs.pathExists(outputPath)) {
-              await fs.remove(outputPath);
-              console.log(`Removed existing target file: ${outputPath}`);
-            }
-            await fs.move(actualOutputPath, outputPath);
-            console.log(`Moved ${actualOutputPath} to ${outputPath}`);
-          }
-          console.log('PDF to PNG conversion successful');
+        const result = await convert(1);
+        if (result.path && await fs.pathExists(result.path)) {
+          await fs.move(result.path, outputPath, { overwrite: true });
         } else {
-          console.error(`PDF conversion failed - output file not found: ${actualOutputPath}`);
-
-          // Try fallback with direct ImageMagick command
-          console.log('Attempting fallback conversion with ImageMagick...');
-          const { execSync } = await import('child_process');
-          const escapedInput = inputPath.replace(/'/g, "'\"'\"'");
-          const escapedOutput = outputPath.replace(/'/g, "'\"'\"'");
-
-          try {
-            execSync(`convert '${escapedInput}[0]' -density 150 '${escapedOutput}'`, {
-              timeout: 30000, // 30 second timeout
-              stdio: 'pipe'
-            });
-
-            if (!await fs.pathExists(outputPath)) {
-              throw new Error("ImageMagick fallback also failed to create output file");
-            }
-
-            console.log('ImageMagick fallback conversion successful');
-          } catch (magickError) {
-            console.error('ImageMagick fallback failed:', magickError);
-            throw new Error(`Both pdf2pic and ImageMagick conversion failed. ImageMagick error: ${(magickError as Error).message}`);
-          }
+          execSync(`convert '${inputPath}[0]' -density 150 '${outputPath}'`, { timeout: 30000 });
         }
       } catch (error) {
-        console.error('PDF to PNG conversion failed:', error);
-        throw new Error(`Failed to convert PDF to PNG: ${(error as Error).message}`);
+        throw new Error(`PDF to PNG failed: ${(error as Error).message}`);
       }
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to PNG`);
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToWebp(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .webp({ quality: 85 })
-        .toFile(outputPath);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to WebP`);
-    }
-
+    await sharp(inputPath).webp({ quality: 85 }).toFile(outputPath);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToGif(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .gif()
-        .toFile(outputPath);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to GIF`);
-    }
-
+    await sharp(inputPath).gif().toFile(outputPath);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToBmp(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      // Sharp doesn't support BMP output, convert to PNG instead and rename
-      const tempPngPath = outputPath.replace('.bmp', '.png');
-      await sharp(inputPath)
-        .png()
-        .toFile(tempPngPath);
-
-      // For now, we'll use PNG as BMP alternative since Sharp doesn't support BMP output
-      // In a real implementation, you'd use a library that supports BMP
-      await fs.move(tempPngPath, outputPath.replace('.bmp', '.png'));
-      outputPath = outputPath.replace('.bmp', '.png');
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to BMP`);
+    try {
+      execSync(`convert '${inputPath}' '${outputPath}'`, { timeout: 20000 });
+    } catch (e) {
+      const tempPng = outputPath + '.png';
+      await sharp(inputPath).png().toFile(tempPng);
+      execSync(`convert '${tempPng}' '${outputPath}'`);
+      await fs.remove(tempPng);
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToTiff(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .tiff({ quality: 85 })
-        .toFile(outputPath);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to TIFF`);
-    }
-
+    await sharp(inputPath).tiff({ quality: 85 }).toFile(outputPath);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToAvif(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      await sharp(inputPath)
-        .avif({ quality: 85, effort: 4 })
-        .toFile(outputPath);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to AVIF`);
-    }
-
+    await sharp(inputPath).avif({ quality: 85, effort: 4 }).toFile(outputPath);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
-  // Document Conversions
   private async convertToTxt(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (file.extension.toLowerCase() === '.pdf') {
-      try {
-        // Extract text from PDF using pdf-parse with dynamic import
-        const pdfParse = (await import('pdf-parse')).default;
-        const pdfBuffer = await fs.readFile(inputPath);
-        const data = await pdfParse(pdfBuffer);
-
-        if (data.text && data.text.trim().length > 0) {
-          await fs.writeFile(outputPath, data.text);
-        } else {
-          // Fallback if no text is extracted
-          const placeholderText = `[PDF Content from ${file.name}]\n\nThis PDF appears to contain images or scanned content without extractable text.\nOriginal file: ${file.name}\nPages: ${data.numpages || 'Unknown'}\n\nFor better text extraction, ensure the PDF contains selectable text rather than scanned images.`;
-          await fs.writeFile(outputPath, placeholderText);
-        }
-      } catch (error) {
-        console.warn('PDF text extraction failed:', error);
-        // Fallback to placeholder text
-        const textContent = `[PDF Content from ${file.name}]\n\nPDF text extraction failed.\nOriginal file: ${file.name}\nSize: ${file.size} bytes\n\nNote: This may be a scanned PDF or contain complex formatting.\nTry using dedicated PDF text extraction tools for better results.`;
-        await fs.writeFile(outputPath, textContent);
-      }
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(await fs.readFile(inputPath));
+      await fs.writeFile(outputPath, data.text || "No text extractable");
     } else if (['.docx', '.doc'].includes(file.extension.toLowerCase())) {
-      // Convert DOCX to text using mammoth
       const result = await mammoth.extractRawText({ path: inputPath });
       await fs.writeFile(outputPath, result.value);
     } else if (file.extension.toLowerCase() === '.html') {
-      // Strip HTML tags for basic conversion
-      const htmlContent = await fs.readFile(inputPath, 'utf-8');
-      const textContent = htmlContent.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ');
-      await fs.writeFile(outputPath, textContent);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to TXT`);
+      const html = await fs.readFile(inputPath, 'utf-8');
+      await fs.writeFile(outputPath, html.replace(/<[^>]*>/g, ''));
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToDocx(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (file.extension.toLowerCase() === '.pdf') {
-      try {
-        // Extract text from PDF and create a basic Word document
-        const pdfParse = (await import('pdf-parse')).default;
-        const pdfBuffer = await fs.readFile(inputPath);
-        const data = await pdfParse(pdfBuffer);
-
-        // Create a simple DOCX structure (this is a basic implementation)
-        // For a proper implementation, you'd use a library like officegen or docx
-        const textContent = data.text || `Content from ${file.name}\n\nThis PDF was converted to Word format.\nSome formatting may be lost in the conversion process.`;
-
-        // For now, we'll create a basic text file with .docx extension
-        // In a production environment, you'd want to use a proper Word document library
-        const basicDocContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<!-- Basic Word document conversion from PDF -->\n<!-- Original file: ${file.name} -->\n\n${textContent}`;
-
-        await fs.writeFile(outputPath, basicDocContent);
-
-        console.warn('PDF to DOCX conversion is basic. For full Word formatting, consider using specialized PDF-to-Word conversion libraries.');
-      } catch (error) {
-        console.error('PDF to DOCX conversion failed:', error);
-        // Create a basic document with error info
-        const errorContent = `Document converted from ${file.name}\n\nConversion Error: ${(error as Error).message}\n\nNote: This is a basic conversion. For better results, use specialized PDF to Word conversion tools.`;
-        await fs.writeFile(outputPath, errorContent);
-      }
-    } else if (file.extension.toLowerCase() === '.txt') {
-      // Convert TXT to DOCX using basic formatting
-      const textContent = await fs.readFile(inputPath, 'utf-8');
-      // This would require a library like officegen or docx for proper implementation
-      const basicDocContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<!-- Basic Word document -->\n\n${textContent}`;
-      await fs.writeFile(outputPath, basicDocContent);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to DOCX`);
+    try {
+      execSync(`pandoc '${inputPath}' -o '${outputPath}'`, { timeout: 30000 });
+    } catch (e) {
+      const textContent = (file.extension === '.pdf') ? 
+        (await (await import('pdf-parse')).default(await fs.readFile(inputPath))).text : 
+        await fs.readFile(inputPath, 'utf-8');
+      await fs.writeFile(outputPath, textContent); 
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToHtml(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (file.extension.toLowerCase() === '.md') {
-      // Convert Markdown to HTML (requires markdown parser)
-      throw new Error("Markdown to HTML conversion requires additional dependencies");
-    } else if (file.extension.toLowerCase() === '.txt') {
-      // Convert TXT to HTML with basic formatting
-      const textContent = await fs.readFile(inputPath, 'utf-8');
-      const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>${file.name}</title>
-</head>
-<body>
-    <pre>${textContent}</pre>
-</body>
-</html>`;
-      await fs.writeFile(outputPath, htmlContent);
+      const md = await fs.readFile(inputPath, 'utf-8');
+      const html = `<!DOCTYPE html><html><body>${marked.parse(md)}</body></html>`;
+      await fs.writeFile(outputPath, html);
     } else {
-      throw new Error(`Cannot convert ${file.extension} to HTML`);
+      const txt = await fs.readFile(inputPath, 'utf-8');
+      await fs.writeFile(outputPath, `<html><body><pre>${txt}</pre></body></html>`);
     }
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
-  // Spreadsheet Conversions
   private async convertToXlsx(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (file.extension.toLowerCase() === '.csv') {
-      // Convert CSV to XLSX
-      const csvData = await fs.readFile(inputPath, 'utf-8');
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.aoa_to_sheet(
-        csvData.split('\n').map(row => row.split(','))
-      );
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-      XLSX.writeFile(workbook, outputPath);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to XLSX`);
-    }
-
+    const csvData = await fs.readFile(inputPath, 'utf-8');
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(csvData.split('\n').map(row => row.split(',')));
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    XLSX.writeFile(workbook, outputPath);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToCsv(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (['.xlsx', '.xls'].includes(file.extension.toLowerCase())) {
-      // Convert XLSX to CSV
-      const workbook = XLSX.readFile(inputPath);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const csvData = XLSX.utils.sheet_to_csv(worksheet);
-      await fs.writeFile(outputPath, csvData);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to CSV`);
-    }
-
+    const workbook = XLSX.readFile(inputPath);
+    const csvData = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+    await fs.writeFile(outputPath, csvData);
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
-  // Data Format Conversions
   private async convertToJson(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    let data: any;
-    const ext = file.extension.toLowerCase();
-
-    if (ext === '.yaml' || ext === '.yml') {
-      // YAML to JSON
-      const yamlContent = await fs.readFile(inputPath, 'utf-8');
-      data = yaml.load(yamlContent);
-    } else if (ext === '.toml') {
-      // TOML to JSON
-      const tomlContent = await fs.readFile(inputPath, 'utf-8');
-      data = toml.parse(tomlContent);
-    } else if (ext === '.xml') {
-      // XML to JSON
-      const xmlContent = await fs.readFile(inputPath, 'utf-8');
-      const parser = new XMLParser({ ignoreAttributes: false });
-      data = parser.parse(xmlContent);
-    } else if (ext === '.csv') {
-      // CSV to JSON
-      const csvContent = await fs.readFile(inputPath, 'utf-8');
-      const workbook = XLSX.read(csvContent, { type: 'string' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      data = XLSX.utils.sheet_to_json(worksheet);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to JSON`);
-    }
-
+    const content = await fs.readFile(inputPath, 'utf-8');
+    let data;
+    if (file.extension === '.yaml' || file.extension === '.yml') data = yaml.load(content);
+    else if (file.extension === '.toml') data = toml.parse(content);
+    else if (file.extension === '.xml') data = new XMLParser().parse(content);
     await fs.writeFile(outputPath, JSON.stringify(data, null, 2));
-
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToYaml(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    let data: any;
-    const ext = file.extension.toLowerCase();
-
-    if (ext === '.json') {
-      // JSON to YAML
-      const jsonContent = await fs.readFile(inputPath, 'utf-8');
-      data = JSON.parse(jsonContent);
-    } else if (ext === '.toml') {
-      // TOML to YAML
-      const tomlContent = await fs.readFile(inputPath, 'utf-8');
-      data = toml.parse(tomlContent);
-    } else if (ext === '.xml') {
-      // XML to YAML
-      const xmlContent = await fs.readFile(inputPath, 'utf-8');
-      const parser = new XMLParser({ ignoreAttributes: false });
-      data = parser.parse(xmlContent);
-    } else if (ext === '.csv') {
-      // CSV to YAML
-      const csvContent = await fs.readFile(inputPath, 'utf-8');
-      const workbook = XLSX.read(csvContent, { type: 'string' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      data = XLSX.utils.sheet_to_json(worksheet);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to YAML`);
-    }
-
-    const yamlContent = yaml.dump(data, { indent: 2, lineWidth: -1 });
-    await fs.writeFile(outputPath, yamlContent);
-
+    const json = JSON.parse(await fs.readFile(inputPath, 'utf-8'));
+    await fs.writeFile(outputPath, yaml.dump(json));
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToToml(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    let data: any;
-    const ext = file.extension.toLowerCase();
-
-    if (ext === '.json') {
-      // JSON to TOML
-      const jsonContent = await fs.readFile(inputPath, 'utf-8');
-      data = JSON.parse(jsonContent);
-    } else if (ext === '.yaml' || ext === '.yml') {
-      // YAML to TOML
-      const yamlContent = await fs.readFile(inputPath, 'utf-8');
-      data = yaml.load(yamlContent);
-    } else if (ext === '.xml') {
-      // XML to TOML
-      const xmlContent = await fs.readFile(inputPath, 'utf-8');
-      const parser = new XMLParser({ ignoreAttributes: false });
-      data = parser.parse(xmlContent);
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to TOML`);
-    }
-
-    const tomlContent = toml.stringify(data);
-    await fs.writeFile(outputPath, tomlContent);
-
+    const json = JSON.parse(await fs.readFile(inputPath, 'utf-8'));
+    await fs.writeFile(outputPath, toml.stringify(json));
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToXml(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    let data: any;
-    const ext = file.extension.toLowerCase();
-
-    if (ext === '.json') {
-      // JSON to XML
-      const jsonContent = await fs.readFile(inputPath, 'utf-8');
-      data = JSON.parse(jsonContent);
-    } else if (ext === '.yaml' || ext === '.yml') {
-      // YAML to XML
-      const yamlContent = await fs.readFile(inputPath, 'utf-8');
-      data = yaml.load(yamlContent);
-    } else if (ext === '.toml') {
-      // TOML to XML
-      const tomlContent = await fs.readFile(inputPath, 'utf-8');
-      data = toml.parse(tomlContent);
-    } else if (ext === '.csv') {
-      // CSV to XML
-      const csvContent = await fs.readFile(inputPath, 'utf-8');
-      const workbook = XLSX.read(csvContent, { type: 'string' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      data = { rows: XLSX.utils.sheet_to_json(worksheet) };
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to XML`);
-    }
-
-    const builder = new XMLBuilder({ ignoreAttributes: false, format: true });
-    const xmlContent = builder.build(data);
-    await fs.writeFile(outputPath, xmlContent);
-
+    const json = JSON.parse(await fs.readFile(inputPath, 'utf-8'));
+    await fs.writeFile(outputPath, new XMLBuilder().build(json));
     const stats = await fs.stat(outputPath);
-    return {
-      originalName: file.name,
-      convertedName: path.basename(outputPath),
-      size: stats.size,
-      path: outputPath,
-    };
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
-  // Audio Conversions (using FFmpeg)
   private async convertToMp3(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isAudioFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to MP3`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('mp3')
-        .audioBitrate(192)
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('mp3').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToWav(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isAudioFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to WAV`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('wav')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('wav').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToOgg(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isAudioFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to OGG`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('ogg')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('ogg').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToM4a(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isAudioFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to M4A`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('m4a')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('m4a').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
-  // Video Conversions (using FFmpeg)
   private async convertToMp4(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isVideoFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to MP4`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('mp4')
-        .videoCodec('libx264')
-        .audioCodec('aac')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('mp4').videoCodec('libx264').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToAvi(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isVideoFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to AVI`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('avi')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('avi').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToWebm(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isVideoFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to WebM`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('webm')
-        .videoCodec('libvpx')
-        .audioCodec('libvorbis')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('webm').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
   private async convertToMov(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (!this.isVideoFile(file.extension)) {
-      throw new Error(`Cannot convert ${file.extension} to MOV`);
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .toFormat('mov')
-        .save(outputPath)
-        .on('end', async () => {
-          const stats = await fs.stat(outputPath);
-          resolve({
-            originalName: file.name,
-            convertedName: path.basename(outputPath),
-            size: stats.size,
-            path: outputPath,
-          });
-        })
-        .on('error', reject);
+    return new Promise((res, rej) => {
+      ffmpeg(inputPath).toFormat('mov').on('end', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath })).on('error', rej).save(outputPath);
     });
   }
 
-  // Archive Conversions
   private async convertToZip(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    return new Promise((resolve, reject) => {
+    return new Promise((res, rej) => {
       const output = createWriteStream(outputPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
-
-      output.on('close', async () => {
-        const stats = await fs.stat(outputPath);
-        resolve({
-          originalName: file.name,
-          convertedName: path.basename(outputPath),
-          size: stats.size,
-          path: outputPath,
-        });
-      });
-
-      archive.on('error', reject);
+      const archive = archiver('zip');
+      output.on('close', async () => res({ originalName: file.name, convertedName: path.basename(outputPath), size: (await fs.stat(outputPath)).size, path: outputPath }));
+      archive.on('error', rej);
       archive.pipe(output);
       archive.file(inputPath, { name: file.name });
       archive.finalize();
@@ -975,269 +404,42 @@ export class FileConverter {
   }
 
   private async convertToTar(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    try {
-      // Use system tar command for tar conversion
-      execSync(`tar -czf "${outputPath}" -C "${path.dirname(inputPath)}" "${path.basename(inputPath)}"`);
-
-      const stats = await fs.stat(outputPath);
-      return {
-        originalName: file.name,
-        convertedName: path.basename(outputPath),
-        size: stats.size,
-        path: outputPath,
-      };
-    } catch (error) {
-      throw new Error(`Failed to create TAR archive: ${error}`);
-    }
+    execSync(`tar -czf "${outputPath}" -C "${path.dirname(inputPath)}" "${path.basename(inputPath)}"`);
+    const stats = await fs.stat(outputPath);
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
   private async convertToPdf(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
-    if (this.isImageFile(file.extension)) {
-      try {
-        // Convert image to PDF
-        const imageBuffer = await fs.readFile(inputPath);
-
-        // Validate image file before attempting conversion
-        if (imageBuffer.length === 0) {
-          throw new Error(`Empty or invalid image file: ${file.name}`);
-        }
-
-        const pdfDoc = await PDFDocument.create();
-
-        let image;
-        if (file.extension === ".jpg" || file.extension === ".jpeg") {
-          try {
-            image = await pdfDoc.embedJpg(imageBuffer);
-          } catch (jpgError) {
-            // Try converting to PNG first if JPG embedding fails
-            console.warn(`Direct JPEG embedding failed for ${file.name}, trying conversion to PNG:`, jpgError);
-            const pngBuffer = await sharp(inputPath).png().toBuffer();
-            image = await pdfDoc.embedPng(pngBuffer);
-          }
-        } else if (file.extension === ".png") {
-          try {
-            image = await pdfDoc.embedPng(imageBuffer);
-          } catch (pngError) {
-            // Re-process with Sharp if PNG embedding fails
-            console.warn(`Direct PNG embedding failed for ${file.name}, trying re-processing:`, pngError);
-            const pngBuffer = await sharp(inputPath).png().toBuffer();
-            image = await pdfDoc.embedPng(pngBuffer);
-          }
-        } else {
-          // Convert other formats to PNG first, then embed
-          const pngBuffer = await sharp(inputPath).png().toBuffer();
-          image = await pdfDoc.embedPng(pngBuffer);
-        }
-
-        const page = pdfDoc.addPage([image.width, image.height]);
-        page.drawImage(image, {
-          x: 0,
-          y: 0,
-          width: image.width,
-          height: image.height,
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        await fs.writeFile(outputPath, pdfBytes);
-
-        // Verify the output file was created successfully
-        const stats = await fs.stat(outputPath);
-        if (stats.size === 0) {
-          throw new Error(`PDF conversion resulted in empty file for ${file.name}`);
-        }
-
-        return {
-          originalName: file.name,
-          convertedName: path.basename(outputPath),
-          size: stats.size,
-          path: outputPath,
-        };
-      } catch (error) {
-        // Clean up any partial files
-        if (fs.existsSync(outputPath)) {
-          await fs.remove(outputPath);
-        }
-        throw new Error(`Failed to convert ${file.name} to PDF: ${(error as Error).message}`);
-      }
-    } else {
-      throw new Error(`Cannot convert ${file.extension} to PDF`);
-    }
+    const imageBuffer = await fs.readFile(inputPath);
+    if (imageBuffer.length === 0) throw new Error("Empty image file");
+    const pdfDoc = await PDFDocument.create();
+    let image;
+    if (file.extension.match(/\.jpe?g/i)) image = await pdfDoc.embedJpg(imageBuffer);
+    else image = await pdfDoc.embedPng(await sharp(inputPath).png().toBuffer());
+    const page = pdfDoc.addPage([image.width, image.height]);
+    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+    await fs.writeFile(outputPath, await pdfDoc.save());
+    const stats = await fs.stat(outputPath);
+    return { originalName: file.name, convertedName: path.basename(outputPath), size: stats.size, path: outputPath };
   }
 
-  private isImageFile(extension: string): boolean {
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".svg", ".avif"];
-    return imageExtensions.includes(extension.toLowerCase());
-  }
+  private isImageFile(ext: string) { return [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".svg", ".avif"].includes(ext.toLowerCase()); }
+  private isAudioFile(ext: string) { return [".mp3", ".wav", ".ogg", ".m4a", ".aac"].includes(ext.toLowerCase()); }
+  private isVideoFile(ext: string) { return [".mp4", ".avi", ".mov", ".webm", ".mkv"].includes(ext.toLowerCase()); }
+  private isDocumentFile(ext: string) { return [".pdf", ".doc", ".docx", ".txt", ".md", ".html"].includes(ext.toLowerCase()); }
+  private isSpreadsheetFile(ext: string) { return [".xlsx", ".xls", ".csv"].includes(ext.toLowerCase()); }
+  private isDataFile(ext: string) { return [".json", ".yaml", ".yml", ".toml", ".xml"].includes(ext.toLowerCase()); }
+  private isArchiveFile(ext: string) { return [".zip", ".tar", ".gz"].includes(ext.toLowerCase()); }
 
-  private isDocumentFile(extension: string): boolean {
-    const docExtensions = [".pdf", ".doc", ".docx", ".txt", ".md", ".html", ".rtf"];
-    return docExtensions.includes(extension.toLowerCase());
-  }
-
-  private isSpreadsheetFile(extension: string): boolean {
-    const spreadsheetExtensions = [".xlsx", ".xls", ".csv", ".tsv"];
-    return spreadsheetExtensions.includes(extension.toLowerCase());
-  }
-
-  private isAudioFile(extension: string): boolean {
-    const audioExtensions = [".mp3", ".wav", ".ogg", ".m4a", ".aac"];
-    return audioExtensions.includes(extension.toLowerCase());
-  }
-
-  private isVideoFile(extension: string): boolean {
-    const videoExtensions = [".mp4", ".avi", ".mov", ".webm", ".mkv"];
-    return videoExtensions.includes(extension.toLowerCase());
-  }
-
-  private isArchiveFile(extension: string): boolean {
-    const archiveExtensions = [".zip", ".rar", ".7z", ".tar", ".gz"];
-    return archiveExtensions.includes(extension.toLowerCase());
-  }
-
-  private isDataFile(extension: string): boolean {
-    const dataExtensions = [".json", ".yaml", ".yml", ".toml", ".xml"];
-    return dataExtensions.includes(extension.toLowerCase());
-  }
-
-  getSupportedConversions(fileExtension: string): string[] {
-    const ext = fileExtension.toLowerCase();
-
-    // Image conversions
-    if (this.isImageFile(ext)) {
-      return ["jpg", "png", "webp", "pdf", "gif", "tiff", "avif"];
-    }
-
-    // Document conversions
-    if (this.isDocumentFile(ext)) {
-      if (['.pdf'].includes(ext)) {
-        return ["txt", "jpg", "png"]; // PDF can be converted to text and images
-      }
-      if (['.docx', '.doc'].includes(ext)) {
-        return ["pdf", "txt", "html"];
-      }
-      if (['.txt'].includes(ext)) {
-        return ["pdf", "docx", "html"];
-      }
-      if (['.md'].includes(ext)) {
-        return ["html", "pdf", "docx"];
-      }
-      if (['.html'].includes(ext)) {
-        return ["pdf", "txt"];
-      }
-    }
-
-    // Spreadsheet conversions
-    if (this.isSpreadsheetFile(ext)) {
-      if (['.csv'].includes(ext)) {
-        return ["xlsx", "pdf", "html", "json", "yaml", "xml"];
-      }
-      if (['.xlsx', '.xls'].includes(ext)) {
-        return ["csv", "pdf", "html"];
-      }
-    }
-
-    // Data format conversions
-    if (this.isDataFile(ext)) {
-      if (['.json'].includes(ext)) {
-        return ["yaml", "toml", "xml"];
-      }
-      if (['.yaml', '.yml'].includes(ext)) {
-        return ["json", "toml", "xml"];
-      }
-      if (['.toml'].includes(ext)) {
-        return ["json", "yaml", "xml"];
-      }
-      if (['.xml'].includes(ext)) {
-        return ["json", "yaml", "toml"];
-      }
-    }
-
-    // Audio conversions
-    if (this.isAudioFile(ext)) {
-      if (['.mp3'].includes(ext)) {
-        return ["wav", "ogg", "m4a"];
-      }
-      if (['.wav'].includes(ext)) {
-        return ["mp3", "ogg", "m4a"];
-      }
-      if (['.ogg', '.m4a', '.aac'].includes(ext)) {
-        return ["mp3", "wav"];
-      }
-    }
-
-    // Video conversions
-    if (this.isVideoFile(ext)) {
-      if (['.mp4'].includes(ext)) {
-        return ["avi", "mov", "webm", "gif"];
-      }
-      if (['.avi', '.mov'].includes(ext)) {
-        return ["mp4", "webm", "gif"];
-      }
-      if (['.webm'].includes(ext)) {
-        return ["mp4", "avi", "gif"];
-      }
-    }
-
-    // Archive conversions
-    if (this.isArchiveFile(ext)) {
-      if (['.zip'].includes(ext)) {
-        return ["tar", "rar"];
-      }
-      if (['.tar', '.tar.gz'].includes(ext)) {
-        return ["zip"];
-      }
-    }
-
-    // Default: can always create zip archive
+  getSupportedConversions(ext: string): string[] {
+    const e = ext.toLowerCase();
+    if (this.isImageFile(e)) return ["jpg", "png", "webp", "pdf", "gif", "bmp", "tiff", "avif"];
+    if (e === ".pdf") return ["txt", "jpg", "png", "docx"];
+    if (e === ".docx") return ["pdf", "txt", "html"];
+    if (e === ".md") return ["html", "pdf"];
+    if (e === ".csv") return ["xlsx", "json", "yaml", "xml"];
+    if (this.isAudioFile(e)) return ["mp3", "wav", "ogg"];
+    if (this.isVideoFile(e)) return ["mp4", "webm", "gif"];
     return ["zip"];
-  }
-
-  getConversionDescription(fromExt: string, toExt: string): string {
-    const descriptions: { [key: string]: string } = {
-      // Image formats
-      "jpg": "JPEG - Compressed image format, best for photos",
-      "png": "PNG - Lossless format, supports transparency",
-      "webp": "WebP - Modern format with better compression",
-      "avif": "AVIF - Next-gen format with superior compression",
-      "pdf": "PDF - Universal document format",
-      "gif": "GIF - Supports animation and transparency",
-      "bmp": "BMP - Uncompressed bitmap format",
-      "tiff": "TIFF - High-quality format for professional use",
-      "svg": "SVG - Vector format that scales without quality loss",
-
-      // Document formats
-      "txt": "Plain Text - Universal text format",
-      "docx": "Microsoft Word - Editable document format",
-      "html": "HTML - Web document format",
-
-      // Spreadsheet formats
-      "xlsx": "Excel - Microsoft spreadsheet format",
-      "csv": "CSV - Comma-separated values, universal data format",
-
-      // Data formats
-      "json": "JSON - JavaScript Object Notation, widely used data format",
-      "yaml": "YAML - Human-readable data serialization format",
-      "yml": "YAML - Human-readable data serialization format",
-      "toml": "TOML - Tom's Obvious, Minimal Language config format",
-      "xml": "XML - Extensible Markup Language for structured data",
-
-      // Audio formats
-      "mp3": "MP3 - Compressed audio, widely supported",
-      "wav": "WAV - Uncompressed audio, high quality",
-      "ogg": "OGG - Open-source compressed audio",
-      "m4a": "M4A - Apple audio format, good compression",
-
-      // Video formats
-      "mp4": "MP4 - Universal video format, widely supported",
-      "avi": "AVI - Windows video format",
-      "webm": "WebM - Web-optimized video format",
-      "mov": "QuickTime - Apple video format",
-
-      // Archive formats
-      "zip": "ZIP - Compressed archive format",
-      "tar": "TAR - Unix archive format"
-    };
-
-    return descriptions[toExt] || `Convert to ${toExt.toUpperCase()}`;
   }
 }
