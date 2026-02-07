@@ -16,18 +16,38 @@ test-files/
 
 ## 📄 Documents
 
-| File | Format | Features Tested |
-|------|--------|----------------|
-| `sample.md` | Markdown | Headers, **bold**, *italic*, tables, code blocks, lists |
-| `sample.txt` | Plain Text | Multi-paragraph text, special characters, line breaks |
-| `sample.json` | JSON | Nested objects, arrays, data conversion |
-| `sample.csv` | CSV | Spreadsheet data, headers, multiple columns |
+| File | Format | Size | Features Tested |
+|------|--------|------|----------------|
+| `sample.md` | Markdown | ~1.6 KB | Headers, **bold**, *italic*, tables, code blocks, lists |
+| `sample.txt` | Plain Text | ~1.8 KB | Multi-paragraph text, special characters, line breaks |
+| `sample.docx` | Word Document | ~1.3 MB | **BEST for testing DOCX→PDF formatting!** Real document with fonts, styles |
+| `sample.pdf` | PDF | ~86 KB | Multi-page PDF for testing PDF→Image conversions |
+| `sample.json` | JSON | ~1.2 KB | Nested objects, arrays, data conversion |
+| `sample.csv` | CSV | ~452 B | Spreadsheet data, headers, multiple columns |
+| `sample.yaml` | YAML | ~2.1 KB | Configuration data, nested structures, lists |
+| `sample.xml` | XML | ~4 KB | Structured data with attributes and elements |
 
 ## 🖼️ Images
 
-| File | Format | Features Tested |
-|------|--------|----------------|
-| `sample.svg` | SVG | Vector graphics, shapes, gradients, text |
+| File | Format | Size | Features Tested |
+|------|--------|------|----------------|
+| `sample.jpg` | JPEG | ~1 MB | Photo quality, compression, color accuracy |
+| `sample.png` | PNG | ~1 MB | Lossless quality, transparency support (if applicable) |
+| `sample.webp` | WebP | ~30 KB | Modern format, compression efficiency |
+| `sample.svg` | SVG | ~1.7 KB | Vector graphics, shapes, gradients, text |
+
+## 🎵 Audio
+
+| File | Format | Size | Features Tested |
+|------|--------|------|----------------|
+| `sample.mp3` | MP3 | ~1 MB | Compressed audio, MP3→WAV/OGG conversions |
+| `sample.wav` | WAV | ~1 MB | Uncompressed audio, WAV→MP3 conversions |
+
+## 🎬 Video
+
+| File | Format | Size | Features Tested |
+|------|--------|------|----------------|
+| `sample.mp4` | MP4 | ~1.5 MB | Video conversion, MP4→AVI/WebM conversions |
 
 ## 🎯 Usage with Test Conversion Feature
 
@@ -39,17 +59,30 @@ test-files/
 
 ## ✅ What to Test
 
-### Document Conversions
-- ✅ **Markdown → PDF**: Verify headers, tables, code blocks preserved
-- ✅ **DOCX → PDF**: Check fonts, styles, images intact
-- ✅ **TXT → PDF**: Ensure paragraphs and spacing maintained
-- ✅ **JSON → YAML/TOML/XML**: Validate data structure conversion
-- ✅ **CSV → JSON/XLSX**: Check column headers and data types
+### Document Conversions (⭐ PRIORITY)
+- ✅ **sample.docx → PDF**: Verify fonts, tables, styles maintained (**THIS IS THE BIG ONE!**)
+- ✅ **sample.md → PDF**: Check headers, tables, code blocks, lists preserved
+- ✅ **sample.txt → PDF**: Ensure paragraphs and spacing maintained
+- ✅ **sample.json → YAML/TOML/XML**: Validate data structure conversion
+- ✅ **sample.yaml → JSON/XML**: Check nested structure preservation
+- ✅ **sample.xml → JSON/YAML**: Verify attribute and element conversion
+- ✅ **sample.csv → JSON/XLSX**: Check column headers and data types
+- ✅ **sample.pdf → PNG/JPG**: Test PDF to image conversion
 
 ### Image Conversions
-- ✅ **SVG → PNG**: Verify rasterization quality
-- ✅ **PNG → JPG**: Check color accuracy
-- ✅ **JPG → WEBP**: Verify compression and quality
+- ✅ **sample.svg → PNG**: Verify rasterization quality
+- ✅ **sample.png → JPG**: Check color accuracy
+- ✅ **sample.jpg → WEBP**: Verify compression and quality
+- ✅ **sample.webp → JPG/PNG**: Test modern format compatibility
+
+### Audio Conversions (Docker/FFmpeg required)
+- ✅ **sample.mp3 → WAV**: Test lossy to lossless conversion
+- ✅ **sample.wav → MP3**: Check compression quality
+- ✅ **sample.mp3 → OGG**: Verify alternative format support
+
+### Video Conversions (Docker/FFmpeg required)
+- ✅ **sample.mp4 → AVI**: Test video format conversion
+- ✅ **sample.mp4 → WebM**: Check web-optimized output
 
 ### Quality Indicators
 ✅ **Good conversion**: Formatting, fonts, colors, structure preserved

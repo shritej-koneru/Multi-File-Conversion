@@ -1,0 +1,88 @@
+# Multi-File Conversion Service Configuration
+# Sample YAML file for testing YAML conversions
+
+application:
+  name: Multi-File Conversion Service
+  version: 1.0.0
+  description: A powerful web service for converting files between 40+ formats
+
+server:
+  host: localhost
+  port: 5000
+  environment: production
+  features:
+    - name: PDF Conversion
+      enabled: true
+      description: DOCX and Markdown to PDF with formatting preservation
+    - name: Image Conversion
+      enabled: true
+      description: JPG, PNG, WebP, AVIF, SVG, GIF, BMP, TIFF
+    - name: Audio Conversion
+      enabled: true
+      description: MP3, WAV, OGG, M4A formats
+    - name: Video Conversion
+      enabled: true
+      description: MP4, AVI, WebM, MOV formats
+
+dependencies:
+  required:
+    - sharp        # Image processing
+    - pdf-lib      # PDF generation
+    - fluent-ffmpeg # Media conversion
+  optional:
+    - pandoc       # Document conversion
+    - libreoffice  # Office formats
+
+users:
+  - id: 1
+    name: Alice Johnson
+    email: alice@example.com
+    role: admin
+    permissions:
+      - read
+      - write
+      - delete
+    active: true
+  - id: 2
+    name: Bob Smith
+    email: bob@example.com
+    role: user
+    permissions:
+      - read
+      - write
+    active: true
+  - id: 3
+    name: Charlie Brown
+    email: charlie@example.com
+    role: moderator
+    permissions:
+      - read
+      - write
+      - moderate
+    active: false
+
+settings:
+  uploads:
+    maxFileSize: 52428800  # 50MB in bytes
+    maxFiles: 10
+    allowedExtensions:
+      documents: [pdf, docx, doc, txt, md, html]
+      images: [jpg, jpeg, png, gif, webp, svg, bmp, tiff, avif]
+      audio: [mp3, wav, ogg, m4a]
+      video: [mp4, avi, mov, webm, mkv]
+      data: [json, yaml, toml, xml, csv]
+  
+  conversion:
+    timeout: 300  # 5 minutes
+    preserveFormatting: true
+    autoCleanup: true
+    cleanupAfter: 3600  # 1 hour
+
+monitoring:
+  enabled: true
+  logLevel: info
+  metrics:
+    - conversionsPerHour
+    - averageConversionTime
+    - errorRate
+    - storageUsed

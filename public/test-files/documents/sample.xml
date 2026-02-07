@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application>
+  <metadata>
+    <name>Multi-File Conversion Service</name>
+    <version>1.0.0</version>
+    <description>A powerful web service for converting files between 40+ formats</description>
+    <lastUpdated>2026-02-07</lastUpdated>
+  </metadata>
+  
+  <server>
+    <host>localhost</host>
+    <port>5000</port>
+    <environment>production</environment>
+  </server>
+  
+  <features>
+    <feature enabled="true">
+      <name>PDF Conversion</name>
+      <description>DOCX and Markdown to PDF with formatting preservation</description>
+      <tools>
+        <tool required="false">Pandoc</tool>
+        <tool required="false">LibreOffice</tool>
+      </tools>
+    </feature>
+    <feature enabled="true">
+      <name>Image Conversion</name>
+      <description>JPG, PNG, WebP, AVIF, SVG, GIF, BMP, TIFF</description>
+      <tools>
+        <tool required="true">Sharp</tool>
+      </tools>
+    </feature>
+    <feature enabled="true">
+      <name>Audio Conversion</name>
+      <description>MP3, WAV, OGG, M4A formats</description>
+      <tools>
+        <tool required="true">FFmpeg</tool>
+      </tools>
+    </feature>
+    <feature enabled="true">
+      <name>Video Conversion</name>
+      <description>MP4, AVI, WebM, MOV formats</description>
+      <tools>
+        <tool required="true">FFmpeg</tool>
+      </tools>
+    </feature>
+  </features>
+  
+  <users>
+    <user id="1" active="true">
+      <name>Alice Johnson</name>
+      <email>alice@example.com</email>
+      <role>admin</role>
+      <permissions>
+        <permission>read</permission>
+        <permission>write</permission>
+        <permission>delete</permission>
+      </permissions>
+    </user>
+    <user id="2" active="true">
+      <name>Bob Smith</name>
+      <email>bob@example.com</email>
+      <role>user</role>
+      <permissions>
+        <permission>read</permission>
+        <permission>write</permission>
+      </permissions>
+    </user>
+    <user id="3" active="false">
+      <name>Charlie Brown</name>
+      <email>charlie@example.com</email>
+      <role>moderator</role>
+      <permissions>
+        <permission>read</permission>
+        <permission>write</permission>
+        <permission>moderate</permission>
+      </permissions>
+    </user>
+  </users>
+  
+  <settings>
+    <uploads>
+      <maxFileSize>52428800</maxFileSize> <!-- 50MB in bytes -->
+      <maxFiles>10</maxFiles>
+      <allowedExtensions>
+        <category name="documents">
+          <extension>pdf</extension>
+          <extension>docx</extension>
+          <extension>doc</extension>
+          <extension>txt</extension>
+          <extension>md</extension>
+          <extension>html</extension>
+        </category>
+        <category name="images">
+          <extension>jpg</extension>
+          <extension>png</extension>
+          <extension>gif</extension>
+          <extension>webp</extension>
+          <extension>svg</extension>
+        </category>
+        <category name="audio">
+          <extension>mp3</extension>
+          <extension>wav</extension>
+          <extension>ogg</extension>
+          <extension>m4a</extension>
+        </category>
+        <category name="video">
+          <extension>mp4</extension>
+          <extension>avi</extension>
+          <extension>mov</extension>
+          <extension>webm</extension>
+        </category>
+      </allowedExtensions>
+    </uploads>
+    
+    <conversion>
+      <timeout>300</timeout> <!-- 5 minutes -->
+      <preserveFormatting>true</preserveFormatting>
+      <autoCleanup>true</autoCleanup>
+      <cleanupAfter>3600</cleanupAfter> <!-- 1 hour -->
+    </conversion>
+  </settings>
+  
+  <monitoring enabled="true">
+    <logLevel>info</logLevel>
+    <metrics>
+      <metric>conversionsPerHour</metric>
+      <metric>averageConversionTime</metric>
+      <metric>errorRate</metric>
+      <metric>storageUsed</metric>
+    </metrics>
+  </monitoring>
+</application>
