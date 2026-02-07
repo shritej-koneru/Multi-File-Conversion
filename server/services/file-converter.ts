@@ -1645,10 +1645,9 @@ export class FileConverter {
       }
     } else if (file.extension.toLowerCase() === '.md') {
       try {
-        // Convert MD to PDF
+        // Convert MD to PDF using two-step process for best formatting
         console.log(`Starting MD to PDF conversion: ${inputPath} -> ${outputPath}`);
 
-        // Read markdown content
         const markdownContent = await fs.readFile(inputPath, 'utf-8');
 
         if (!markdownContent || markdownContent.trim().length === 0) {
@@ -1656,21 +1655,51 @@ export class FileConverter {
         }
 
         const hasPandoc = this.checkPandocAvailable();
+        const hasLibreOffice = this.checkLibreOfficeAvailable();
         let conversionSuccessful = false;
 
-        // Strategy 1: Use Pandoc for proper markdown formatting (BEST option)
-        if (hasPandoc) {
+        // Strategy 1: Two-step conversion MD→DOCX→PDF (BEST option)
+        if (hasPandoc && hasLibreOffice) {
           try {
-            console.log('Converting Markdown to PDF with Pandoc (preserves formatting)...');
+            console.log('Converting Markdown → DOCX → PDF (preserves all formatting)...');
+
+            // Step 1: Convert Markdown to DOCX with Pandoc
+            const tempDocxPath = inputPath.replace(/\.[^.]+$/, '.temp.docx');
+            await this.convertWithPandoc(inputPath, tempDocxPath, 'docx', 'markdown');
+            console.log('✅ Step 1: Markdown → DOCX successful');
+
+            // Step 2: Convert DOCX to PDF with LibreOffice
+            await this.convertWithLibreOffice(tempDocxPath, outputPath, 'pdf');
+            console.log('✅ Step 2: DOCX → PDF successful');
+
+            // Clean up temporary DOCX file
+            if (await fs.pathExists(tempDocxPath)) {
+              await fs.remove(tempDocxPath);
+            }
+
+            conversionSuccessful = true;
+            console.log('✅ Two-step markdown conversion successful with full formatting!');
+          } catch (error) {
+            console.log(`Two-step markdown conversion failed: ${(error as Error).message}`);
+            // Clean up temporary file if it exists
+            const tempDocxPath = inputPath.replace(/\.[^.]+$/, '.temp.docx');
+            if (await fs.pathExists(tempDocxPath)) {
+              await fs.remove(tempDocxPath);
+            }
+          }
+        } else if (hasPandoc) {
+          // Strategy 2: Try Pandoc direct conversion (requires LaTeX)
+          try {
+            console.log('Converting Markdown to PDF with Pandoc (may require LaTeX)...');
             await this.convertWithPandoc(inputPath, outputPath, 'pdf', 'markdown');
             conversionSuccessful = true;
-            console.log('✅ Pandoc markdown conversion successful with full formatting');
+            console.log('✅ Pandoc markdown conversion successful');
           } catch (error) {
-            console.log(`Pandoc markdown conversion failed: ${(error as Error).message}`);
+            console.log(`Pandoc direct conversion failed: ${(error as Error).message}`);
           }
         }
 
-        // Strategy 2: Fallback to basic text conversion (if Pandoc unavailable)
+        // Strategy 3: Fallback to basic text conversion (if tools unavailable)
         if (!conversionSuccessful) {
           console.log('⚠️  Falling back to basic text conversion (formatting will be lost)');
 
