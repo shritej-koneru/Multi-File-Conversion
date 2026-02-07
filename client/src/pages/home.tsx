@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileUpload } from "@/components/file-upload";
 import { ConversionPanel } from "@/components/conversion-panel";
 import { DownloadSection } from "@/components/download-section";
+import { TestConversion } from "@/components/test-conversion";
 
 export interface UploadedFile {
   name: string;
@@ -76,12 +77,28 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload Section */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <FileUpload
               uploadedFiles={uploadedFiles}
               onFilesUploaded={handleFilesUploaded}
               onRemoveFile={handleRemoveFile}
             />
+
+            {/* Test Conversion Section */}
+            <div className="space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or try with sample files
+                  </span>
+                </div>
+              </div>
+
+              <TestConversion />
+            </div>
           </div>
 
           {/* Conversion and Download Panel */}

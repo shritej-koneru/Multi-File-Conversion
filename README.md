@@ -40,12 +40,33 @@ npm run docker:run
 
 ### Local Development
 ```bash
-# Prerequisites: Node.js 18+, GraphicsMagick
+# Prerequisites: Node.js 18+
 npm install
 npm run dev
 
 # Access at http://localhost:5000
 ```
+
+### 📚 Optional: Enhanced Document Conversion (Recommended)
+
+For **best quality DOCX to PDF** conversions, install LibreOffice and/or Pandoc:
+
+**Windows (Automated):**
+```powershell
+.\scripts\install-conversion-tools.ps1
+```
+
+**Windows (Manual):**
+```powershell
+choco install pandoc libreoffice-fresh -y
+```
+
+**Linux:**
+```bash
+sudo apt-get install pandoc libreoffice -y
+```
+
+Without these tools, the service uses a basic fallback that works but loses formatting. See [Conversion Tools Setup](docs/conversion-tools-setup.md) for details.
 
 ## 📖 Documentation
 
@@ -54,7 +75,8 @@ npm run dev
 | [📚 Full Documentation](docs/README.md) | Complete feature overview and usage guide |
 | [🔄 Supported Conversions](docs/conversion_supported.md) | All supported formats and conversion matrix |
 | [🚀 Deployment Guide](docs/deployment-guide.md) | Docker, Render, Railway deployment instructions |
-| [📡 API Reference](docs/api-reference.md) | Complete REST API documentation |
+| [�️ Conversion Tools Setup](docs/conversion-tools-setup.md) | Install LibreOffice/Pandoc for best quality |
+| [�📡 API Reference](docs/api-reference.md) | Complete REST API documentation |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
 ## 🎯 Supported Formats

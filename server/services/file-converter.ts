@@ -991,6 +991,129 @@ export class FileConverter {
     }
   }
 
+  // Tool availability detection methods
+  private checkPandocAvailable(): boolean {
+    try {
+      execSync('pandoc --version', { stdio: 'ignore' });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private checkLibreOfficeAvailable(): boolean {
+    try {
+      if (process.platform === 'win32') {
+        // Check common Windows installation paths
+        const commonPaths = [
+          'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+          'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+        ];
+        
+        for (const path of commonPaths) {
+          if (fs.existsSync(path)) {
+            return true;
+          }
+        }
+        
+        // Try PATH
+        try {
+          execSync('where soffice', { stdio: 'ignore' });
+          return true;
+        } catch {
+          return false;
+        }
+      } else {
+        // Linux/Mac
+        execSync('which soffice', { stdio: 'ignore' });
+        return true;
+      }
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Pandoc conversion helper
+  private async convertWithPandoc(
+    inputPath: string,
+    outputPath: string,
+    outputFormat: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Build pandoc command
+        const command = `pandoc "${inputPath}" -o "${outputPath}" --pdf-engine=xelatex`;
+
+        console.log(`Executing Pandoc: ${command}`);
+        execSync(command, { timeout: 30000 }); // 30 second timeout
+
+        // Verify output file was created
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error('Pandoc conversion completed but output file not found'));
+          return;
+        }
+
+        resolve();
+      } catch (error) {
+        reject(new Error(`Pandoc conversion failed: ${(error as Error).message}`));
+      }
+    });
+  }
+
+  // LibreOffice conversion helper
+  private async convertWithLibreOffice(
+    inputPath: string,
+    outputPath: string,
+    outputFormat: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const outputDir = path.dirname(outputPath);
+        let soffice = 'soffice';
+        
+        if (process.platform === 'win32') {
+          // Check common Windows installation paths
+          const commonPaths = [
+            'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+            'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+          ];
+          
+          for (const sofficePath of commonPaths) {
+            if (fs.existsSync(sofficePath)) {
+              soffice = `"${sofficePath}"`;
+              break;
+            }
+          }
+        }
+
+        // LibreOffice command: --headless --convert-to pdf --outdir <dir> <file>
+        const command = `${soffice} --headless --convert-to ${outputFormat} --outdir "${outputDir}" "${inputPath}"`;
+
+        console.log(`Executing LibreOffice: ${command}`);
+        execSync(command, { timeout: 60000 }); // 60 second timeout for large files
+
+        // LibreOffice creates the file with the original name but new extension
+        // We may need to rename it to match outputPath
+        const expectedOutputName = path.parse(inputPath).name + '.' + outputFormat;
+        const expectedOutputPath = path.join(outputDir, expectedOutputName);
+
+        if (expectedOutputPath !== outputPath && fs.existsSync(expectedOutputPath)) {
+          fs.renameSync(expectedOutputPath, outputPath);
+        }
+
+        // Verify output file was created
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error('LibreOffice conversion completed but output file not found'));
+          return;
+        }
+
+        resolve();
+      } catch (error) {
+        reject(new Error(`LibreOffice conversion failed: ${(error as Error).message}`));
+      }
+    });
+  }
+
   private async convertToPdf(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (this.isImageFile(file.extension)) {
       try {
@@ -1057,6 +1180,390 @@ export class FileConverter {
         if (fs.existsSync(outputPath)) {
           await fs.remove(outputPath);
         }
+        throw new Error(`Failed to convert ${file.name} to PDF: ${(error as Error).message}`);
+      }
+    } else if (['.docx', '.doc'].includes(file.extension.toLowerCase())) {
+      // DOCX/DOC to PDF conversion with smart fallback strategy
+      console.log(`Starting DOCX to PDF conversion: ${inputPath} -> ${outputPath}`);
+
+      const hasPandoc = this.checkPandocAvailable();
+      const hasLibreOffice = this.checkLibreOfficeAvailable();
+
+      console.log(`Available tools - Pandoc: ${hasPandoc}, LibreOffice: ${hasLibreOffice}`);
+
+      let conversionSuccessful = false;
+      let lastError: Error | null = null;
+
+      // Strategy 1: Try Pandoc first (fast, lightweight, good for simple docs)
+      if (hasPandoc && !conversionSuccessful) {
+        try {
+          console.log('Attempting conversion with Pandoc...');
+          await this.convertWithPandoc(inputPath, outputPath, 'pdf');
+          conversionSuccessful = true;
+          console.log('✅ Pandoc conversion successful');
+        } catch (error) {
+          console.log(`Pandoc conversion failed: ${(error as Error).message}`);
+          lastError = error as Error;
+        }
+      }
+
+      // Strategy 2: Try LibreOffice if Pandoc failed or unavailable (best for complex docs)
+      if (hasLibreOffice && !conversionSuccessful) {
+        try {
+          console.log('Attempting conversion with LibreOffice...');
+          await this.convertWithLibreOffice(inputPath, outputPath, 'pdf');
+          conversionSuccessful = true;
+          console.log('✅ LibreOffice conversion successful');
+        } catch (error) {
+          console.log(`LibreOffice conversion failed: ${(error as Error).message}`);
+          lastError = error as Error;
+        }
+      }
+
+      // Strategy 3: Fallback to HTML-based conversion (preserves basic formatting)
+      if (!conversionSuccessful) {
+        console.log('⚠️  Falling back to HTML-based conversion (preserves basic formatting)');
+        try {
+          // Convert DOCX to HTML using mammoth (preserves formatting)
+          const result = await mammoth.convertToHtml({ path: inputPath });
+          const htmlContent = result.value;
+
+          console.log(`Converted DOCX to HTML (${htmlContent.length} characters)`);
+
+          if (!htmlContent || htmlContent.trim().length === 0) {
+            throw new Error(`No content found in ${file.name}`);
+          }
+
+          // Use Pandoc if available to convert HTML to PDF (better quality)
+          if (hasPandoc) {
+            try {
+              const tempHtmlPath = inputPath.replace(/\.[^.]+$/, '.temp.html');
+              await fs.writeFile(tempHtmlPath, htmlContent);
+              
+              const command = `pandoc "${tempHtmlPath}" -o "${outputPath}" -f html -t pdf`;
+              console.log(`Executing Pandoc HTML to PDF: ${command}`);
+              execSync(command, { timeout: 30000 });
+              
+              await fs.remove(tempHtmlPath);
+              
+              if (fs.existsSync(outputPath)) {
+                conversionSuccessful = true;
+                console.log('✅ HTML-based conversion with Pandoc successful');
+              }
+            } catch (pandocError) {
+              console.log('Pandoc HTML conversion failed, trying text extraction');
+            }
+          }
+          
+          // If Pandoc HTML conversion failed or unavailable, extract text from HTML
+          if (!conversionSuccessful) {
+            // Strip HTML tags for text extraction
+            let textContent = htmlContent
+              .replace(/<style[^>]*>.*?<\/style>/gis, '')
+              .replace(/<script[^>]*>.*?<\/script>/gis, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            console.log(`Extracted ${textContent.length} characters from HTML`);
+
+            if (!textContent || textContent.trim().length === 0) {
+              throw new Error(`No text content found in ${file.name}`);
+            }
+
+            // Filter out characters that pdf-lib cannot render
+            textContent = textContent.replace(/[^\x00-\xFF]/g, '?');
+
+            // Create PDF document with plain text
+            const pdfDoc = await PDFDocument.create();
+            const pageWidth = 612;
+            const pageHeight = 792;
+            const margin = 50;
+            const maxWidth = pageWidth - (2 * margin);
+            const fontSize = 12;
+            const lineHeight = fontSize * 1.2;
+
+            // Split text into lines
+            const words = textContent.split(/\s+/);
+            const lines: string[] = [];
+            let currentLine = '';
+
+            for (const word of words) {
+              const testLine = currentLine ? `${currentLine} ${word}` : word;
+              const estimatedWidth = testLine.length * (fontSize * 0.5);
+
+              if (estimatedWidth > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
+            }
+            if (currentLine) {
+              lines.push(currentLine);
+            }
+
+            // Create pages and draw text
+            let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            let yPosition = pageHeight - margin;
+
+            for (const line of lines) {
+              if (yPosition < margin) {
+                currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+                yPosition = pageHeight - margin;
+              }
+
+              try {
+                currentPage.drawText(line, {
+                  x: margin,
+                  y: yPosition,
+                  size: fontSize,
+                  color: rgb(0, 0, 0),
+                });
+              } catch (drawError) {
+                console.error(`Error drawing line:`, (drawError as Error).message);
+                continue;
+              }
+
+              yPosition -= lineHeight;
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            await fs.writeFile(outputPath, pdfBytes);
+            conversionSuccessful = true;
+            console.log('✅ Text-based conversion successful (basic formatting preserved)');
+          }
+        } catch (error) {
+          console.error('HTML-based conversion also failed:', error);
+          lastError = error as Error;
+        }
+      }
+
+      // If all strategies failed, throw error
+      if (!conversionSuccessful) {
+        if (fs.existsSync(outputPath)) {
+          await fs.remove(outputPath);
+        }
+        throw new Error(`Failed to convert ${file.name} to PDF. ${lastError?.message || 'All conversion methods failed'}`);
+      }
+
+      // Verify and return result
+      const stats = await fs.stat(outputPath);
+      if (stats.size === 0) {
+        throw new Error(`PDF conversion resulted in empty file for ${file.name}`);
+      }
+
+      console.log(`DOCX to PDF conversion successful: ${outputPath} (${stats.size} bytes)`);
+
+      return {
+        originalName: file.name,
+        convertedName: path.basename(outputPath),
+        size: stats.size,
+        path: outputPath,
+      };
+    } else if (file.extension.toLowerCase() === '.txt') {
+      try {
+        // Convert TXT to PDF
+        console.log(`Starting TXT to PDF conversion: ${inputPath} -> ${outputPath}`);
+
+        // Read text content
+        const textContent = await fs.readFile(inputPath, 'utf-8');
+
+        if (!textContent || textContent.trim().length === 0) {
+          throw new Error(`No text content found in ${file.name}`);
+        }
+
+        // Create PDF document
+        const pdfDoc = await PDFDocument.create();
+
+        // Set up page dimensions and margins
+        const pageWidth = 612; // 8.5 inches at 72 DPI
+        const pageHeight = 792; // 11 inches at 72 DPI
+        const margin = 50;
+        const maxWidth = pageWidth - (2 * margin);
+        const fontSize = 12;
+        const lineHeight = fontSize * 1.2;
+
+        // Split text into lines that fit the page width
+        const words = textContent.split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          // Rough estimate: average character width is fontSize * 0.5
+          const estimatedWidth = testLine.length * (fontSize * 0.5);
+
+          if (estimatedWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        // Create pages and draw text
+        let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        let yPosition = pageHeight - margin;
+
+        for (const line of lines) {
+          // Check if we need a new page
+          if (yPosition < margin) {
+            currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            yPosition = pageHeight - margin;
+          }
+
+          currentPage.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: fontSize,
+            color: rgb(0, 0, 0),
+          });
+
+          yPosition -= lineHeight;
+        }
+
+        // Save the PDF
+        const pdfBytes = await pdfDoc.save();
+        await fs.writeFile(outputPath, pdfBytes);
+
+        // Verify the output file was created successfully
+        const stats = await fs.stat(outputPath);
+        if (stats.size === 0) {
+          throw new Error(`PDF conversion resulted in empty file for ${file.name}`);
+        }
+
+        console.log(`TXT to PDF conversion successful: ${outputPath}`);
+
+        return {
+          originalName: file.name,
+          convertedName: path.basename(outputPath),
+          size: stats.size,
+          path: outputPath,
+        };
+      } catch (error) {
+        // Clean up any partial files
+        if (fs.existsSync(outputPath)) {
+          await fs.remove(outputPath);
+        }
+        console.error(`TXT to PDF conversion failed:`, error);
+        throw new Error(`Failed to convert ${file.name} to PDF: ${(error as Error).message}`);
+      }
+    } else if (file.extension.toLowerCase() === '.md') {
+      try {
+        // Convert MD to PDF
+        console.log(`Starting MD to PDF conversion: ${inputPath} -> ${outputPath}`);
+
+        // Read markdown content
+        const markdownContent = await fs.readFile(inputPath, 'utf-8');
+
+        if (!markdownContent || markdownContent.trim().length === 0) {
+          throw new Error(`No markdown content found in ${file.name}`);
+        }
+
+        // For now, convert markdown to plain text (strip markdown syntax)
+        // In the future, this could use a markdown-to-PDF library for better formatting
+        let textContent = markdownContent
+          // Remove code blocks
+          .replace(/```[\s\S]*?```/g, '')
+          // Remove inline code
+          .replace(/`([^`]+)`/g, '$1')
+          // Remove headers (keep the text)
+          .replace(/^#+\s+/gm, '')
+          // Remove bold/italic
+          .replace(/(\*\*|__)(.*?)\1/g, '$2')
+          .replace(/(\*|_)(.*?)\1/g, '$2')
+          // Remove links (keep the text)
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+          // Remove images
+          .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '[Image: $1]')
+          // Clean up
+          .trim();
+
+        // Create PDF document
+        const pdfDoc = await PDFDocument.create();
+
+        // Set up page dimensions and margins
+        const pageWidth = 612; // 8.5 inches at 72 DPI
+        const pageHeight = 792; // 11 inches at 72 DPI
+        const margin = 50;
+        const maxWidth = pageWidth - (2 * margin);
+        const fontSize = 12;
+        const lineHeight = fontSize * 1.2;
+
+        // Split text into lines that fit the page width
+        const words = textContent.split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const estimatedWidth = testLine.length * (fontSize * 0.5);
+
+          if (estimatedWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        // Create pages and draw text
+        let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        let yPosition = pageHeight - margin;
+
+        for (const line of lines) {
+          // Check if we need a new page
+          if (yPosition < margin) {
+            currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            yPosition = pageHeight - margin;
+          }
+
+          currentPage.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: fontSize,
+            color: rgb(0, 0, 0),
+          });
+
+          yPosition -= lineHeight;
+        }
+
+        // Save the PDF
+        const pdfBytes = await pdfDoc.save();
+        await fs.writeFile(outputPath, pdfBytes);
+
+        // Verify the output file was created successfully
+        const stats = await fs.stat(outputPath);
+        if (stats.size === 0) {
+          throw new Error(`PDF conversion resulted in empty file for ${file.name}`);
+        }
+
+        console.log(`MD to PDF conversion successful: ${outputPath}`);
+
+        return {
+          originalName: file.name,
+          convertedName: path.basename(outputPath),
+          size: stats.size,
+          path: outputPath,
+        };
+      } catch (error) {
+        // Clean up any partial files
+        if (fs.existsSync(outputPath)) {
+          await fs.remove(outputPath);
+        }
+        console.error(`MD to PDF conversion failed:`, error);
         throw new Error(`Failed to convert ${file.name} to PDF: ${(error as Error).message}`);
       }
     } else {

@@ -4,7 +4,7 @@ services:
     name: multi-file-conversion
     runtime: node
     plan: starter
-    buildCommand: npm install && npm run build
+    buildCommand: chmod +x scripts/*.sh && ./scripts/install-all-deps.sh && npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
