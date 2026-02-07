@@ -992,13 +992,39 @@ export class FileConverter {
   }
 
   // Tool availability detection methods
-  private checkPandocAvailable(): boolean {
+  // Helper method to find Pandoc executable path
+  private getPandocPath(): string | null {
+    // First try PATH
     try {
       execSync('pandoc --version', { stdio: 'ignore' });
-      return true;
-    } catch (error) {
-      return false;
+      return 'pandoc'; // Available in PATH
+    } catch {
+      // Not in PATH, check common installation directories
     }
+
+    // Check common Windows installation paths
+    if (process.platform === 'win32') {
+      const commonPaths = [
+        'C:\\Program Files\\Pandoc\\pandoc.exe',
+        'C:\\Program Files (x86)\\Pandoc\\pandoc.exe',
+        `${process.env.LOCALAPPDATA}\\Pandoc\\pandoc.exe`,
+        `${process.env.APPDATA}\\Local\\Pandoc\\pandoc.exe`,
+        `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Pandoc\\pandoc.exe`,
+      ];
+
+      for (const pandocPath of commonPaths) {
+        if (fs.existsSync(pandocPath)) {
+          console.log(`Found Pandoc at: ${pandocPath}`);
+          return pandocPath;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private checkPandocAvailable(): boolean {
+    return this.getPandocPath() !== null;
   }
 
   private checkLibreOfficeAvailable(): boolean {
@@ -1042,10 +1068,17 @@ export class FileConverter {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Get Pandoc executable path (auto-detect if not in PATH)
+        const pandocExe = this.getPandocPath();
+        if (!pandocExe) {
+          reject(new Error('Pandoc executable not found'));
+          return;
+        }
+
         // Build pandoc command with proper formatting preservation
         const formatFlag = fromFormat ? `-f ${fromFormat}` : '';
         const command = [
-          'pandoc',
+          `"${pandocExe}"`,
           `"${inputPath}"`,
           '-o', `"${outputPath}"`,
           formatFlag,
@@ -1087,22 +1120,16 @@ export class FileConverter {
         let soffice = 'soffice';
 
         if (process.platform === 'win32') {
-          // Check for custom/portable LibreOffice path from environment variable
-          if (process.env.LIBREOFFICE_PATH && fs.existsSync(process.env.LIBREOFFICE_PATH)) {
-            soffice = `"${process.env.LIBREOFFICE_PATH}"`;
-            console.log(`Using LibreOffice from custom path: ${process.env.LIBREOFFICE_PATH}`);
-          } else {
-            // Check common Windows installation paths
-            const commonPaths = [
-              'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
-              'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
-            ];
+          // Check common Windows installation paths
+          const commonPaths = [
+            'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+            'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+          ];
 
-            for (const sofficePath of commonPaths) {
-              if (fs.existsSync(sofficePath)) {
-                soffice = `"${sofficePath}"`;
-                break;
-              }
+          for (const sofficePath of commonPaths) {
+            if (fs.existsSync(sofficePath)) {
+              soffice = `"${sofficePath}"`;
+              break;
             }
           }
         }
