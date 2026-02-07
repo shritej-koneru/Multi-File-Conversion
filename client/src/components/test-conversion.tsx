@@ -159,7 +159,7 @@ export function TestConversion() {
                     🧪 Test Conversion
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Test File Conversion</DialogTitle>
                     <DialogDescription>
@@ -167,81 +167,89 @@ export function TestConversion() {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : testFiles.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No test files available. Add files to public/test-files/
-                        </div>
-                    ) : (
-                        <>
-                            {/* File Selection */}
-                            <div className="space-y-3">
-                                <Label>Select Test File</Label>
-                                <RadioGroup value={selectedFile} onValueChange={setSelectedFile}>
-                                    {testFiles.map((file) => (
-                                        <div key={file.path} className="flex items-start space-x-3 space-y-0">
-                                            <RadioGroupItem value={file.path} id={file.path} />
-                                            <Label
-                                                htmlFor={file.path}
-                                                className="font-normal cursor-pointer flex-1"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="font-medium">{file.name}</div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            {file.category} • {(file.size / 1024).toFixed(1)} KB
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {file.extension}
-                                                    </div>
-                                                </div>
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
+                <div className="flex-1 overflow-y-auto px-1">
+                    <div className="space-y-6 py-4">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
-
-                            {/* Format Selection */}
-                            {selectedTestFile && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="format">Convert To</Label>
-                                    <Select value={targetFormat} onValueChange={setTargetFormat}>
-                                        <SelectTrigger id="format">
-                                            <SelectValue placeholder="Select target format" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedTestFile.supportedConversions.map((format) => (
-                                                <SelectItem key={format} value={format}>
-                                                    {format.toUpperCase()}
-                                                </SelectItem>
+                        ) : testFiles.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                No test files available. Add files to public/test-files/
+                            </div>
+                        ) : (
+                            <>
+                                {/* File Selection */}
+                                <div className="space-y-3">
+                                    <Label>Select Test File</Label>
+                                    <RadioGroup value={selectedFile} onValueChange={setSelectedFile}>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {testFiles.map((file) => (
+                                                <div
+                                                    key={file.path}
+                                                    className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${selectedFile === file.path
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-border hover:border-primary/50'
+                                                        }`}
+                                                >
+                                                    <RadioGroupItem value={file.path} id={file.path} className="mt-1" />
+                                                    <Label
+                                                        htmlFor={file.path}
+                                                        className="font-normal cursor-pointer flex-1"
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <div className="font-medium">{file.name}</div>
+                                                            <div className="text-sm text-muted-foreground">
+                                                                {file.category} • {(file.size / 1024).toFixed(1)} KB
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-1">
+                                                                .{file.extension}
+                                                            </div>
+                                                        </div>
+                                                    </Label>
+                                                </div>
                                             ))}
-                                        </SelectContent>
-                                    </Select>
+                                        </div>
+                                    </RadioGroup>
                                 </div>
-                            )}
 
-                            {/* Convert Button */}
-                            <Button
-                                onClick={handleStartConversion}
-                                disabled={!selectedFile || !targetFormat || converting}
-                                className="w-full"
-                            >
-                                {converting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Converting...
-                                    </>
-                                ) : (
-                                    "Start Test Conversion"
+                                {/* Format Selection */}
+                                {selectedTestFile && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="format">Convert To</Label>
+                                        <Select value={targetFormat} onValueChange={setTargetFormat}>
+                                            <SelectTrigger id="format">
+                                                <SelectValue placeholder="Select target format" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {selectedTestFile.supportedConversions.map((format) => (
+                                                    <SelectItem key={format} value={format}>
+                                                        {format.toUpperCase()}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 )}
-                            </Button>
-                        </>
-                    )}
+
+                                {/* Convert Button */}
+                                <Button
+                                    onClick={handleStartConversion}
+                                    disabled={!selectedFile || !targetFormat || converting}
+                                    className="w-full"
+                                >
+                                    {converting ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Converting...
+                                        </>
+                                    ) : (
+                                        "Start Test Conversion"
+                                    )}
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
