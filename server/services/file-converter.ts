@@ -374,13 +374,47 @@ export class FileConverter {
 
   private async convertToGif(inputPath: string, outputPath: string, file: FileInfo): Promise<ConvertedFileInfo> {
     if (this.isImageFile(file.extension)) {
+      // Image to GIF conversion using Sharp
       await sharp(inputPath)
         .gif()
         .toFile(outputPath);
+    } else if (this.isVideoFile(file.extension)) {
+      // Video to GIF conversion using FFmpeg
+      console.log(`Converting video to GIF: ${inputPath} -> ${outputPath}`);
+
+      return new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+          .outputOptions([
+            '-vf', 'fps=10,scale=480:-1:flags=lanczos', // 10 FPS, 480px width, maintain aspect ratio
+            '-loop', '0', // Loop forever
+            '-c:v', 'gif'
+          ])
+          .output(outputPath)
+          .on('end', async () => {
+            try {
+              const stats = await fs.stat(outputPath);
+              console.log(`✅ Video to GIF conversion successful: ${outputPath}`);
+              resolve({
+                originalName: file.name,
+                convertedName: path.basename(outputPath),
+                size: stats.size,
+                path: outputPath,
+              });
+            } catch (error) {
+              reject(error);
+            }
+          })
+          .on('error', (err) => {
+            console.error(`❌ Video to GIF conversion failed:`, err);
+            reject(new Error(`FFmpeg video to GIF conversion failed: ${err.message}`));
+          })
+          .run();
+      });
     } else {
-      throw new Error(`Cannot convert ${file.extension} to GIF`);
+      throw new Error(`Cannot convert ${file.extension} to GIF. Supported: images and videos`);
     }
 
+    // For image conversions, Sharp returns synchronously
     const stats = await fs.stat(outputPath);
     return {
       originalName: file.name,
@@ -1911,13 +1945,13 @@ export class FileConverter {
     // Video conversions
     if (this.isVideoFile(ext)) {
       if (['.mp4'].includes(ext)) {
-        return ["avi", "mov", "webm", "gif"];
+        return ["avi", "mov", "webm", "gif"]; // GIF now supported!
       }
       if (['.avi', '.mov'].includes(ext)) {
-        return ["mp4", "webm", "gif"];
+        return ["mp4", "webm", "gif"]; // GIF now supported!
       }
       if (['.webm'].includes(ext)) {
-        return ["mp4", "avi", "gif"];
+        return ["mp4", "avi", "gif"]; // GIF now supported!
       }
     }
 
