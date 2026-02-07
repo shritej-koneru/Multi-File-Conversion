@@ -6,7 +6,7 @@ FROM node:18-bullseye
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including GraphicsMagick
+# Install system dependencies for all conversions
 RUN apt-get update && apt-get install -y \
     graphicsmagick \
     imagemagick \
@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
     libgraphicsmagick++-dev \
     libmagick++-dev \
     ffmpeg \
+    libreoffice \
+    libreoffice-writer \
+    pandoc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

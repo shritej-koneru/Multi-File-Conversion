@@ -1,11 +1,10 @@
 services:
-  # Native Node.js deployment (recommended - simpler and faster)
+  # Docker deployment (ACTIVE - supports all conversions)
   - type: web
     name: multi-file-conversion
-    runtime: node
+    runtime: docker
     plan: starter
-    buildCommand: chmod +x scripts/*.sh && ./scripts/install-all-deps.sh && npm install && npm run build
-    startCommand: npm start
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
@@ -14,12 +13,13 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     
-  # Docker deployment (commented out - can uncomment if needed)
+  # Native Node.js deployment (commented out - limited dependency support)
   # - type: web
-  #   name: multi-file-conversion-docker
-  #   runtime: docker
+  #   name: multi-file-conversion-native
+  #   runtime: node
   #   plan: starter
-  #   dockerfilePath: ./Dockerfile
+  #   buildCommand: chmod +x scripts/*.sh && ./scripts/install-all-deps.sh && npm install && npm run build
+  #   startCommand: npm start
   #   envVars:
   #     - key: NODE_ENV
   #       value: production

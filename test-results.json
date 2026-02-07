@@ -1,0 +1,186 @@
+[
+  {
+    "name": "DOCX → PDF (Formatting)",
+    "source": "sample.docx",
+    "target": "pdf",
+    "status": "FAIL",
+    "time": 23.3,
+    "message": "request to http://localhost:9000/api/conversion/3daf0d1b-aa5f-4f6a-88f6-38692c50f660 failed, reason: read ECONNRESET"
+  },
+  {
+    "name": "Markdown → PDF (Two-Step)",
+    "source": "sample.md",
+    "target": "pdf",
+    "status": "FAIL",
+    "time": 0.5,
+    "message": "Conversion failed"
+  },
+  {
+    "name": "PDF → PNG",
+    "source": "sample.pdf",
+    "target": "png",
+    "status": "FAIL",
+    "time": 0.5,
+    "message": "Conversion failed"
+  },
+  {
+    "name": "TXT → PDF",
+    "source": "sample.txt",
+    "target": "pdf",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.pdf"
+  },
+  {
+    "name": "JSON → YAML",
+    "source": "sample.json",
+    "target": "yaml",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.yaml"
+  },
+  {
+    "name": "JSON → XML",
+    "source": "sample.json",
+    "target": "xml",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.xml"
+  },
+  {
+    "name": "JSON → TOML",
+    "source": "sample.json",
+    "target": "toml",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.toml"
+  },
+  {
+    "name": "YAML → JSON",
+    "source": "sample.yaml",
+    "target": "json",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.json"
+  },
+  {
+    "name": "XML → JSON",
+    "source": "sample.xml",
+    "target": "json",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.json"
+  },
+  {
+    "name": "CSV → XLSX",
+    "source": "sample.csv",
+    "target": "xlsx",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.xlsx"
+  },
+  {
+    "name": "CSV → JSON",
+    "source": "sample.csv",
+    "target": "json",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.json"
+  },
+  {
+    "name": "JPG → PNG",
+    "source": "sample.jpg",
+    "target": "png",
+    "status": "PASS",
+    "time": 1.6,
+    "message": "Success: sample.png"
+  },
+  {
+    "name": "JPG → WEBP",
+    "source": "sample.jpg",
+    "target": "webp",
+    "status": "PASS",
+    "time": 2,
+    "message": "Success: sample.webp"
+  },
+  {
+    "name": "PNG → JPG",
+    "source": "sample.png",
+    "target": "jpg",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.jpg"
+  },
+  {
+    "name": "WEBP → PNG",
+    "source": "sample.webp",
+    "target": "png",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.png"
+  },
+  {
+    "name": "SVG → PNG",
+    "source": "sample.svg",
+    "target": "png",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.png"
+  },
+  {
+    "name": "JPG → PDF",
+    "source": "sample.jpg",
+    "target": "pdf",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.pdf"
+  },
+  {
+    "name": "MP3 → WAV",
+    "source": "sample.mp3",
+    "target": "wav",
+    "status": "PASS",
+    "time": 1.6,
+    "message": "Success: sample.wav"
+  },
+  {
+    "name": "WAV → MP3",
+    "source": "sample.wav",
+    "target": "mp3",
+    "status": "PASS",
+    "time": 0.5,
+    "message": "Success: sample.mp3"
+  },
+  {
+    "name": "MP3 → OGG",
+    "source": "sample.mp3",
+    "target": "ogg",
+    "status": "PASS",
+    "time": 2.6,
+    "message": "Success: sample.ogg"
+  },
+  {
+    "name": "MP4 → GIF ⭐ NEW!",
+    "source": "sample.mp4",
+    "target": "gif",
+    "status": "PASS",
+    "time": 1.1,
+    "message": "Success: sample.gif"
+  },
+  {
+    "name": "MP4 → WEBM",
+    "source": "sample.mp4",
+    "target": "webm",
+    "status": "PASS",
+    "time": 5.1,
+    "message": "Success: sample.webm"
+  },
+  {
+    "name": "MP4 → AVI",
+    "source": "sample.mp4",
+    "target": "avi",
+    "status": "PASS",
+    "time": 1,
+    "message": "Success: sample.avi"
+  }
+]
