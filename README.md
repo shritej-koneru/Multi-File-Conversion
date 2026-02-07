@@ -10,8 +10,12 @@ A powerful, production-ready web service for converting files between **40+ form
 ## ✨ Features
 
 - 🖼️ **Modern Image Formats**: JPG, PNG, WebP, **AVIF**, GIF, TIFF, BMP, SVG ↔ PDF and other formats
+- 📄 **Document Processing with Formatting**: 
+  - ✅ **DOCX → PDF** with full formatting preservation (via LibreOffice)
+  - ✅ **Markdown → PDF** with headers, tables, code blocks (via Pandoc + LibreOffice)
+  - ✅ **Auto-detection** of conversion tools (no PATH configuration needed)
+  - PDF ↔ Images, Text extraction, HTML conversion
 - 📊 **Data Format Conversions**: **NEW!** JSON ↔ YAML ↔ TOML ↔ XML bidirectional conversion
-- 📄 **Document Processing**: PDF ↔ Images, Text extraction, Office documents (DOCX, DOC, HTML)
 - 📑 **Spreadsheets**: XLSX, XLS, CSV with JSON/YAML/XML export capability
 - 🎵 **Media Support**: Audio (MP3, WAV, OGG, M4A) and Video (MP4, AVI, MOV, WebM) conversion with FFmpeg
 - 📦 **Archive Creation**: ZIP and TAR archive support
@@ -47,18 +51,25 @@ npm run dev
 # Access at http://localhost:5000
 ```
 
-### 📚 Optional: Enhanced Document Conversion (Recommended)
+### 📚 Optional: Enhanced Document Conversion (⭐ Recommended)
 
-For **best quality DOCX to PDF** conversions, install LibreOffice and/or Pandoc:
+For **high-quality document conversions with formatting preservation**, install LibreOffice and Pandoc:
 
-**Windows (Automated):**
+#### What You Get:
+- ✅ **DOCX → PDF**: Full formatting (fonts, tables, images, styles)
+- ✅ **Markdown → PDF**: Headers, tables, code blocks, lists preserved
+- ✅ **Auto-detection**: No PATH configuration needed
+- ❌ **Without tools**: Plain text only, all formatting lost
+
+#### Installation:
+
+**Windows (PowerShell):**
 ```powershell
-.\scripts\install-conversion-tools.ps1
-```
+# Install using winget (Windows Package Manager)
+winget install --id JohnMacFarlane.Pandoc
+winget install --idTheDocumentFoundation.LibreOffice
 
-**Windows (Manual):**
-```powershell
-choco install pandoc libreoffice-fresh -y
+# Then restart your PowerShell/terminal
 ```
 
 **Linux:**
@@ -66,7 +77,9 @@ choco install pandoc libreoffice-fresh -y
 sudo apt-get install pandoc libreoffice -y
 ```
 
-Without these tools, the service uses a basic fallback that works but loses formatting. See [Conversion Tools Setup](docs/conversion-tools-setup.md) for details.
+**Already Installed**: The server auto-detects tools even if not in PATH!
+
+See [Conversion Tools Setup](docs/conversion-tools-setup.md) for detailed installation guide.
 
 ## 📖 Documentation
 
@@ -170,6 +183,16 @@ PORT=10000            # Server port (default: 5000 dev, 10000 prod)
 
 ## 🚨 Quick Troubleshooting
 
+### PDF Formatting Issues
+```bash
+# Check if conversion tools are detected
+GET http://localhost:5000/health
+# Look for: pandocAvailable, libreofficeAvailable
+
+# Windows: Restart terminal after installing Pandoc/LibreOffice
+# Tools are auto-detected even if not in PATH!
+```
+
 ### Container Issues
 ```bash
 # Port in use
@@ -188,7 +211,7 @@ docker logs <container-id>
 npm run check-deps
 
 # Test health endpoint
-curl http://localhost:10000/health
+curl http://localhost:5000/health
 ```
 
 See [Troubleshooting Guide](docs/troubleshooting.md) for detailed solutions.

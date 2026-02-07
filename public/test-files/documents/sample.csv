@@ -1,0 +1,8 @@
+Name,Email,Role,Active,JoinDate,Score
+Alice Johnson,alice@example.com,Admin,true,2025-01-15,98.5
+Bob Smith,bob@example.com,User,true,2025-02-01,87.2
+Charlie Brown,charlie@example.com,Moderator,false,2024-12-10,92.8
+Diana Prince,diana@example.com,Admin,true,2025-01-20,95.6
+Eve Anderson,eve@example.com,User,true,2025-02-05,89.3
+Frank Miller,frank@example.com,User,true,2025-01-28,91.4
+Grace Lee,grace@example.com,Moderator,true,2025-01-10,94.2

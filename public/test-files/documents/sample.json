@@ -1,0 +1,48 @@
+{
+    "testDocument": {
+        "title": "Sample JSON Test File",
+        "description": "Testing JSON conversions to YAML, TOML, XML, and CSV",
+        "version": "1.0.0",
+        "timestamp": "2026-02-07T18:21:00Z"
+    },
+    "users": [
+        {
+            "id": 1,
+            "name": "Alice Johnson",
+            "email": "alice@example.com",
+            "role": "admin",
+            "active": true
+        },
+        {
+            "id": 2,
+            "name": "Bob Smith",
+            "email": "bob@example.com",
+            "role": "user",
+            "active": true
+        },
+        {
+            "id": 3,
+            "name": "Charlie Brown",
+            "email": "charlie@example.com",
+            "role": "moderator",
+            "active": false
+        }
+    ],
+    "settings": {
+        "theme": "dark",
+        "notifications": {
+            "email": true,
+            "sms": false,
+            "push": true
+        },
+        "privacy": {
+            "profileVisible": true,
+            "showEmail": false
+        }
+    },
+    "statistics": {
+        "totalUsers": 3,
+        "activeUsers": 2,
+        "lastUpdated": "2026-02-07"
+    }
+}
