@@ -1,17 +1,18 @@
 # Multi-File Conversion Service Dockerfile
-# This Dockerfile includes GraphicsMagick installation for file conversions
+# Includes GraphicsMagick, ImageMagick, FFmpeg, and Pandoc for conversions
 
 FROM node:18-bullseye
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including GraphicsMagick
+# Install system dependencies including GraphicsMagick and Pandoc
 RUN apt-get update && apt-get install -y \
     graphicsmagick \
     imagemagick \
     poppler-utils \
     ghostscript \
+    pandoc \
     libgraphicsmagick++-dev \
     libmagick++-dev \
     ffmpeg \
@@ -21,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (using npm install for better compatibility)
+# Install ALL dependencies
 RUN npm install
 
 # Copy application code
@@ -36,12 +37,17 @@ RUN npm prune --omit=dev
 # Create uploads directory
 RUN mkdir -p uploads
 
+# Verify critical dependencies are installed
+RUN gm version && ffmpeg -version && convert -version && pandoc --version
+
 # Expose port
 EXPOSE 10000
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=10000
+# Prevent OOM errors for large file conversions
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Start the application directly with node
+# Start the application
 CMD ["node", "dist/index.js"]
