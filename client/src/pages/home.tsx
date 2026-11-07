@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { FileUpload } from "@/components/file-upload";
 import { ConversionPanel } from "@/components/conversion-panel";
 import { DownloadSection } from "@/components/download-section";
@@ -29,6 +30,10 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string>("");
   const [conversionJob, setConversionJob] = useState<ConversionJob | null>(null);
 
+  useEffect(() => {
+    document.title = "Convert files — ConvertHub";
+  }, []);
+
   const handleFilesUploaded = (files: UploadedFile[], sessionId: string) => {
     setUploadedFiles(files);
     setSessionId(sessionId);
@@ -52,15 +57,19 @@ export default function Home() {
       <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
+            <Link href="/" className="flex items-center space-x-3" aria-label="ConvertHub story">
               <i className="fas fa-exchange-alt text-2xl text-primary"></i>
               <h1 className="text-2xl font-bold text-foreground">ConvertHub</h1>
-            </div>
+            </Link>
             <nav className="hidden md:flex items-center space-x-6">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Support</a>
+              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">Story</Link>
+              <a href="/#steps" className="text-muted-foreground hover:text-foreground transition-colors">How it works</a>
+              <a href="/#formats" className="text-muted-foreground hover:text-foreground transition-colors">Formats</a>
+              <span className="text-primary font-medium">Converter</span>
             </nav>
+            <Link href="/" className="md:hidden text-sm font-medium text-primary">
+              Story
+            </Link>
           </div>
         </div>
       </header>
@@ -166,6 +175,7 @@ export default function Home() {
               Made with ❤️ by <a href="https://portfolio-two-tau-92.vercel.app" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">Koneru Shritej</a>
             </p>
             <div className="flex justify-center space-x-6 mt-4 text-sm">
+              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">Our story</Link>
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>

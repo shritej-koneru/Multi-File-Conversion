@@ -1,9 +1,8 @@
 # Multi-File Conversion Service 🔄
 
-A powerful, production-ready web service for converting files between **40+ formats**. Built with React, Express, and featuring modern format support inspired by ConvertX.
+A powerful, production-ready web service for converting files between **40+ formats**. Built with React, Express, and featuring modern format support.
 
 ![Multi-File Conversion Service](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Docker](https://img.shields.io/badge/Docker-Supported-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
@@ -19,33 +18,19 @@ A powerful, production-ready web service for converting files between **40+ form
 - 📑 **Spreadsheets**: XLSX, XLS, CSV with JSON/YAML/XML export capability
 - 🎵 **Media Support**: Audio (MP3, WAV, OGG, M4A) and Video (MP4, AVI, MOV, WebM) conversion with FFmpeg
 - 📦 **Archive Creation**: ZIP and TAR archive support
-- 🚀 **Auto-Installation**: GraphicsMagick and dependencies installed automatically  
-- 🐳 **Docker Ready**: One-command deployment with all dependencies included
 - ⚡ **Batch Processing**: Multiple files, multiple output formats, progress tracking
 - 🔒 **Secure**: File validation, session isolation, automatic cleanup
 
 ## 🚀 Quick Start
 
-### Docker (Recommended)
 ```bash
 git clone <your-repo-url>
 cd Multi-File-Conversion
 
-# Build and run
-npm run docker:build
-npm run docker:run
-
-# Or manually:
-# docker build -f docker/Dockerfile -t multi-file-conversion .
-# docker run -p 10000:10000 multi-file-conversion
-
-# Access at http://localhost:10000
-```
-
-### Local Development
-```bash
-# Prerequisites: Node.js 18+
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
 
 # Access at http://localhost:5000
@@ -87,9 +72,9 @@ See [Conversion Tools Setup](docs/conversion-tools-setup.md) for detailed instal
 |----------|-------------|
 | [📚 Full Documentation](docs/README.md) | Complete feature overview and usage guide |
 | [🔄 Supported Conversions](docs/conversion_supported.md) | All supported formats and conversion matrix |
-| [🚀 Deployment Guide](docs/deployment-guide.md) | Docker, Render, Railway deployment instructions |
-| [�️ Conversion Tools Setup](docs/conversion-tools-setup.md) | Install LibreOffice/Pandoc for best quality |
-| [�📡 API Reference](docs/api-reference.md) | Complete REST API documentation |
+| [🚀 Deployment Guide](docs/deployment-guide.md) | Render, Railway deployment instructions |
+| [🛠️ Conversion Tools Setup](docs/conversion-tools-setup.md) | Install LibreOffice/Pandoc for best quality |
+| [📡 API Reference](docs/api-reference.md) | Complete REST API documentation |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
 ## 🎯 Supported Formats
@@ -107,7 +92,7 @@ See [Conversion Tools Setup](docs/conversion-tools-setup.md) for detailed instal
 **JSON, YAML, TOML, XML** ↔ **JSON, YAML, TOML, XML**  
 **CSV** → **JSON, YAML, XML**
 
-### Media (Docker only)
+### Media (requires FFmpeg)
 **MP3, WAV, OGG, M4A** ↔ **MP3, WAV, OGG, M4A**  
 **MP4, AVI, MOV, WebM** ↔ **MP4, AVI, MOV, WebM**
 
@@ -132,7 +117,7 @@ See [Conversion Tools Setup](docs/conversion-tools-setup.md) for detailed instal
 - **Backend**: Node.js, Express, Multer (file uploads)
 - **Processing**: GraphicsMagick, ImageMagick, FFmpeg, Poppler Utils
 - **Storage**: File-based with session management
-- **Deployment**: Docker, Render, Railway support
+- **Deployment**: Render, Railway
 
 ## 📊 API Overview
 
@@ -193,18 +178,6 @@ GET http://localhost:5000/health
 # Tools are auto-detected even if not in PATH!
 ```
 
-### Container Issues
-```bash
-# Port in use
-docker stop $(docker ps -q --filter ancestor=multi-file-conversion)
-
-# Rebuild image  
-docker build --no-cache -t multi-file-conversion .
-
-# Check logs
-docker logs <container-id>
-```
-
 ### Dependency Issues
 ```bash
 # Verify all tools are available
@@ -233,34 +206,23 @@ See [Troubleshooting Guide](docs/troubleshooting.md) for detailed solutions.
 
 ## 🚀 Deployment Options
 
-### Docker (Production)
-```bash
-# Using npm scripts (recommended)
-npm run docker:build
-npm run docker:run
-
-# Or manually
-docker build -f docker/Dockerfile -t multi-file-conversion .
-docker run -p 10000:10000 multi-file-conversion
-```
-
 ### Render (Cloud)  
 ```yaml
 # render.yaml included - automatic deployment
-runtime: docker
-buildCommand: automatic
-startCommand: automatic
+runtime: node
+buildCommand: npm install && npm run build
+startCommand: npm start
 ```
 
 ### Railway (Cloud)
 ```bash  
-# Connect GitHub repo, Railway auto-detects Docker
+# Connect GitHub repo, Railway auto-detects Node.js
 railway login
 railway link
 railway up
 ```
 
-### Local (Development)
+### Local
 ```bash
 npm run dev    # Development server with hot reload
 npm start      # Production server  
@@ -271,8 +233,7 @@ npm start      # Production server
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature-name`  
 3. Test locally: `npm run dev`
-4. Test Docker: `npm run docker:build && npm run docker:run`
-5. Submit pull request
+4. Submit pull request
 
 ## 📄 License
 
@@ -287,4 +248,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Ready to convert?** Start with the [Quick Start](#-quick-start) guide or explore the [full documentation](docs/README.md)! 🚀
+**Ready to convert?** Start with the [Quick Start](#-quick-start) guide or explore the [full documentation](docs/README.md)!

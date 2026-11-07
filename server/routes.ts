@@ -11,6 +11,45 @@ import { cleanupExpiredFiles, cleanupSession } from "./services/cleanup";
 import archiver from "archiver";
 import { execSync } from "child_process";
 
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const SESSION_ID_RE = new RegExp(`^${UUID}$`, "i");
+const UPLOAD_PREFIX_RE = new RegExp(`^${UUID}-`, "i");
+const FORMAT_RE = /^[a-z0-9]{1,8}$/i;
+const MAX_CONCURRENT_CONVERSIONS = 2;
+
+/** True when child is inside (or equal to) parent; path.relative avoids the /a/b vs /a/b2 prefix bug. */
+function isInside(parent: string, child: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+// ponytail: in-process semaphore; use a real job queue if you run multiple instances.
+let activeConversions = 0;
+const waiting: Array<() => void> = [];
+async function withConversionSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeConversions >= MAX_CONCURRENT_CONVERSIONS) {
+    await new Promise<void>((resolve) => waiting.push(resolve));
+  }
+  activeConversions++;
+  try {
+    return await fn();
+  } finally {
+    activeConversions--;
+    waiting.shift()?.();
+  }
+}
+
+// Helper: find uploaded file by name in session directory (files saved with UUID prefix)
+function findUploadedFile(sessionId: string, fileName: string): string {
+  const sessionDir = path.join(uploadDir, sessionId);
+  const safeName = path.basename(fileName);
+  try {
+    const match = fs.readdirSync(sessionDir).find((f) => UPLOAD_PREFIX_RE.test(f) && f.endsWith(`-${safeName}`));
+    if (match) return path.join(sessionDir, match);
+  } catch {}
+  return path.join(sessionDir, safeName);
+}
+
 // Dependency check functions
 function checkGraphicsMagick(): boolean {
   try {
@@ -23,7 +62,12 @@ function checkGraphicsMagick(): boolean {
 
 function checkImageMagick(): boolean {
   try {
-    execSync('convert -version', { stdio: 'ignore' });
+    // Use 'magick' instead of 'convert' to avoid Windows system tool name collision
+    if (process.platform === 'win32') {
+      execSync('magick -version', { stdio: 'ignore' });
+    } else {
+      execSync('convert -version', { stdio: 'ignore' });
+    }
     return true;
   } catch {
     return false;
@@ -71,7 +115,7 @@ const upload = multer({
   },
   fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Comprehensive file validation for all supported formats
-    const allowedTypes = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|tif|svg|pdf|docx|doc|pptx|ppt|txt|md|html|csv|xlsx|xls|tsv|mp4|mp3|wav|ogg|m4a|aac|avi|mov|webm|mkv|zip|rar|tar|gz|7z)$/i;
+    const allowedTypes = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|tif|svg|avif|pdf|docx|doc|pptx|ppt|txt|md|html|htm|csv|xlsx|xls|tsv|json|yaml|yml|toml|xml|mp4|mp3|wav|ogg|m4a|aac|avi|mov|webm|mkv|zip|rar|tar|gz|7z)$/i;
     if (allowedTypes.test(file.originalname)) {
       cb(null, true);
     } else {
@@ -84,16 +128,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const fileConverter = new FileConverter();
 
   // Health check endpoint (moved from "/" to "/health")
+  // Probes use execSync; cache so /health can't stall the event loop on every hit.
+  let depCache: { at: number; value: Record<string, boolean> } | null = null;
   app.get("/health", (req, res) => {
+    if (!depCache || Date.now() - depCache.at > 60_000) {
+      depCache = {
+        at: Date.now(),
+        value: {
+          graphicsMagick: checkGraphicsMagick(),
+          imagemagick: checkImageMagick(),
+          ffmpeg: checkFFmpeg(),
+        },
+      };
+    }
     res.json({
       status: "healthy",
       message: "Multi-File Conversion Service is running",
       timestamp: new Date().toISOString(),
-      dependencies: {
-        graphicsMagick: checkGraphicsMagick(),
-        imagemagick: checkImageMagick(),
-        ffmpeg: checkFFmpeg()
-      }
+      dependencies: depCache.value,
     });
   });
 
@@ -141,6 +193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/formats/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
+      if (!SESSION_ID_RE.test(sessionId)) {
+        return res.status(400).json({ message: "Invalid session id" });
+      }
 
       // Get uploaded files for this session
       const sessionDir = path.join(uploadDir, sessionId);
@@ -148,9 +203,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const files = fs.readdirSync(sessionDir).filter(file => !file.startsWith('.'));
+      // Only originals (multer UUID-prefixed), not converted outputs or zips
+      const files = fs.readdirSync(sessionDir).filter(file => UPLOAD_PREFIX_RE.test(file));
       const fileExtensions = files.map(file => path.extname(file).toLowerCase());
-      const fileConverter = new FileConverter();
 
       // Get all possible conversion formats based on uploaded files
       const allFormats = new Set<string>();
@@ -171,8 +226,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Sort formats by category and popularity
       availableFormats.sort((a, b) => {
-        const order = ['pdf', 'jpg', 'png', 'webp', 'mp4', 'mp3', 'docx', 'xlsx', 'html', 'zip'];
-        return order.indexOf(a.id) - order.indexOf(b.id);
+        const order = ['pdf', 'jpg', 'png', 'webp', 'mp4', 'mp3', 'docx', 'xlsx', 'html', 'json', 'yaml', 'toml', 'xml', 'zip'];
+        const rank = (id: string) => (order.indexOf(id) === -1 ? order.length : order.indexOf(id));
+        return rank(a.id) - rank(b.id);
       });
 
       res.json(availableFormats);
@@ -190,6 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "webp": { name: "WebP", description: "Modern format, 25-50% smaller", icon: "fas fa-file-image" },
       "gif": { name: "GIF", description: "Supports animation, limited colors", icon: "fas fa-file-image" },
       "tiff": { name: "TIFF", description: "High quality, professional printing", icon: "fas fa-file-image" },
+      "avif": { name: "AVIF", description: "Next-gen format, superior compression", icon: "fas fa-file-image" },
       "bmp": { name: "BMP", description: "Uncompressed bitmap format", icon: "fas fa-file-image" },
       "pdf": { name: "PDF", description: "Universal document format", icon: "fas fa-file-pdf" },
 
@@ -216,7 +273,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Archive formats
       "zip": { name: "ZIP Archive", description: "Compressed archive", icon: "fas fa-file-archive" },
-      "tar": { name: "TAR Archive", description: "Unix archive format", icon: "fas fa-file-archive" }
+      "tar": { name: "TAR Archive", description: "Unix archive format", icon: "fas fa-file-archive" },
+
+      // Data formats
+      "json": { name: "JSON", description: "JavaScript Object Notation", icon: "fas fa-code" },
+      "yaml": { name: "YAML", description: "Human-readable data format", icon: "fas fa-code" },
+      "toml": { name: "TOML", description: "Tom's Obvious Minimal Language", icon: "fas fa-code" },
+      "xml": { name: "XML", description: "Extensible Markup Language", icon: "fas fa-code" },
     };
 
     const info = formatMap[format];
@@ -226,24 +289,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start conversion
   app.post("/api/convert", async (req, res) => {
     try {
-      const { sessionId, targetFormat, targetFormats, files } = req.body;
+      const { sessionId, targetFormat, targetFormats, files } = req.body ?? {};
 
       if (!sessionId || (!targetFormat && !targetFormats) || !files || !Array.isArray(files)) {
         return res.status(400).json({ message: "Missing required fields" });
       }
+      if (typeof sessionId !== "string" || !SESSION_ID_RE.test(sessionId)) {
+        return res.status(400).json({ message: "Invalid session id" });
+      }
+      if (files.length === 0 || files.length > 10) {
+        return res.status(400).json({ message: "Provide between 1 and 10 files" });
+      }
 
       // Handle both single format (targetFormat) and multiple formats (targetFormats)
-      const formats = targetFormats && Array.isArray(targetFormats) && targetFormats.length > 0
+      const formats: string[] = (targetFormats && Array.isArray(targetFormats) && targetFormats.length > 0
         ? targetFormats
-        : [targetFormat];
+        : [targetFormat]
+      ).map((f: unknown) => String(f).toLowerCase());
+      if (formats.length > 10 || !formats.every((f) => FORMAT_RE.test(f))) {
+        return res.status(400).json({ message: "Invalid target format" });
+      }
 
-      const fileInfos: FileInfo[] = files.map((file: any) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        extension: file.extension,
-        path: file.savedPath || path.join(uploadDir, sessionId, file.name),
-      }));
+      const sessionRoot = path.resolve(uploadDir, sessionId);
+      const fileInfos: FileInfo[] = [];
+      for (const file of files) {
+        if (!file || typeof file.name !== "string") {
+          return res.status(400).json({ message: "Invalid file entry" });
+        }
+        const name = path.basename(file.name);
+        // Never trust a client-supplied path: it must resolve inside this session's directory.
+        const candidate = path.resolve(
+          typeof file.savedPath === "string" && file.savedPath ? file.savedPath : findUploadedFile(sessionId, name)
+        );
+        if (!isInside(sessionRoot, candidate)) {
+          return res.status(400).json({ message: "Invalid file path" });
+        }
+        fileInfos.push({
+          name,
+          size: Number(file.size) || 0,
+          type: String(file.type ?? ""),
+          extension: path.extname(name).toLowerCase(), // derived server-side
+          path: candidate,
+        });
+      }
 
       const conversion = await storage.createConversion({
         sessionId,
@@ -256,8 +344,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await storage.updateConversionStatus(conversion.id, "processing", 0);
 
-          let convertedFiles: any[];
+          let convertedFiles: any[] = [];
 
+          await withConversionSlot(async () => {
           if (formats.length === 1) {
             // Single format conversion
             convertedFiles = await fileConverter.convertFiles(
@@ -279,6 +368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             );
           }
+          });
 
           // Verify all files were converted successfully
           if (convertedFiles.length === 0) {
@@ -290,9 +380,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             downloadUrl = `/api/download/${conversion.id}/${convertedFiles[0].convertedName}`;
           } else {
             // Create ZIP file for multiple outputs
-            const zipPath = path.join(uploadDir, sessionId, "converted_files.zip");
-            await createZipFile(convertedFiles, zipPath);
-            downloadUrl = `/api/download/${conversion.id}/converted_files.zip`;
+            const zipName = `${conversion.id}_converted_files.zip`; // per-conversion so runs don't overwrite each other
+            await createZipFile(convertedFiles, path.join(uploadDir, sessionId, zipName));
+            downloadUrl = `/api/download/${conversion.id}/${zipName}`;
           }
 
           await storage.updateConversionFiles(conversion.id, convertedFiles, downloadUrl);
@@ -343,9 +433,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found" });
       }
 
-      const filePath = path.join(uploadDir, conversion.sessionId, filename);
+      // Security: only serve a plain filename from inside the session directory
+      const sessionDir = path.resolve(uploadDir, conversion.sessionId);
+      const resolvedFilePath = path.resolve(sessionDir, filename);
+      if (filename !== path.basename(filename) || !isInside(sessionDir, resolvedFilePath)) {
+        return res.status(400).json({ message: "Invalid filename" });
+      }
 
-      if (!fs.existsSync(filePath)) {
+      if (!fs.existsSync(resolvedFilePath)) {
         return res.status(404).json({ message: "File not found" });
       }
 
@@ -390,11 +485,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '.7z': 'application/x-7z-compressed'
       };
 
-      const contentType = mimeTypes[ext] || 'application/octet-stream';
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      
-      res.download(filePath, filename);
+      res.type(mimeTypes[ext] || 'application/octet-stream');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      // res.download encodes the filename safely (no header injection)
+      res.download(resolvedFilePath, filename);
     } catch (error) {
       console.error("Download error:", error);
       res.status(500).json({ message: "Download failed" });
@@ -405,6 +499,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cleanup/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
+      if (!SESSION_ID_RE.test(sessionId)) {
+        return res.status(400).json({ message: "Invalid session id" });
+      }
       await cleanupSession(sessionId, storage);
       res.json({ message: "Session cleaned up successfully" });
     } catch (error) {
@@ -491,11 +588,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing testFilePath or targetFormat" });
       }
 
+      if (typeof testFilePath !== "string" || typeof targetFormat !== "string" || !FORMAT_RE.test(targetFormat)) {
+        return res.status(400).json({ message: "Invalid testFilePath or targetFormat" });
+      }
+
+      // Client sends "/test-files/<category>/<file>" (leading slash made the old check reject
+      // every request). Resolve it under public/test-files only.
+      const testRoot = path.resolve(process.cwd(), "public", "test-files");
+      const stripped = testFilePath.replace(/^[/\\]+/, "");
+      if (!/^test-files[/\\]/.test(stripped)) {
+        return res.status(400).json({ message: "Invalid test file path" });
+      }
+      const relPath = stripped.replace(/^test-files[/\\]/, "");
+      const sourceFile = path.resolve(testRoot, relPath);
+      if (!isInside(testRoot, sourceFile)) {
+        return res.status(400).json({ message: "Invalid test file path" });
+      }
+
       // Generate a session ID for this test conversion
       const sessionId = randomUUID();
-
-      // Get the test file from public directory
-      const sourceFile = path.join(process.cwd(), "public", testFilePath);
 
       if (!fs.existsSync(sourceFile)) {
         return res.status(404).json({ message: "Test file not found" });

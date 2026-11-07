@@ -18,10 +18,10 @@ function serveStaticFiles(app: express.Express): void {
     log(`serving static files from ${staticPath}`);
     
     // Serve index.html for all non-API and non-health routes (SPA fallback)
-    app.get("*", (req, res) => {
-      if (!req.path.startsWith("/api") && req.path !== "/health") {
-        res.sendFile(path.join(staticPath, "index.html"));
-      }
+    app.get("*", (req, res, next) => {
+      // Unknown API routes must 404 instead of hanging with no response
+      if (req.path.startsWith("/api") || req.path === "/health") return next();
+      res.sendFile(path.join(staticPath, "index.html"));
     });
   } else {
     log(`WARNING: Static files directory not found: ${staticPath}`);
@@ -96,12 +96,20 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // Upload errors are client errors: multer size limit -> 413, bad type / other -> 400
+    let status = err.status || err.statusCode || 500;
+    if (err.name === "MulterError") status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    else if (typeof err.message === "string" && err.message.startsWith("File type not supported")) status = 400;
+    // Don't leak internals on 5xx
+    const message = status >= 500 ? "Internal Server Error" : err.message || "Bad Request";
 
+    console.error(`[express] Error ${status}: ${err.message}`);
+    if (res.headersSent) return;
     res.status(status).json({ message });
-    throw err;
   });
+
+  // Keep the process alive on stray async failures in background conversions
+  process.on("unhandledRejection", (reason) => console.error("Unhandled rejection:", reason));
 
   // Setup development or production serving
   if (app.get("env") === "development") {

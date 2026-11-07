@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Settings, Wand2 } from "lucide-react";
+import { Settings, Wand2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { UploadedFile, ConversionJob } from "@/pages/home";
@@ -14,6 +14,26 @@ interface ConversionFormat {
   name: string;
   description: string;
   icon: string;
+}
+
+/** Turn an apiRequest failure into a user-friendly message. The server may
+ * send `{ message }` JSON (e.g. validation errors) or plain text; apiRequest
+ * prefixes non-OK responses with the status code ("500: ..."). */
+function extractErrorMessage(error: any): string {
+  const fallback = "Conversion failed. Please try again.";
+  const raw: string = typeof error?.message === "string" ? error.message : "";
+  if (!raw) return fallback;
+  const withoutStatus = raw.replace(/^\d{3}:\s*/, "");
+  try {
+    const parsed = JSON.parse(withoutStatus);
+    if (parsed && typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message;
+    }
+  } catch {
+    // not JSON — fall through
+  }
+  const trimmed = withoutStatus.trim();
+  return trimmed || fallback;
 }
 
 interface ConversionPanelProps {
@@ -33,6 +53,7 @@ export function ConversionPanel({
 }: ConversionPanelProps) {
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [isConverting, setIsConverting] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   // Fetch available formats
   const { data: formats } = useQuery<ConversionFormat[]>({
@@ -52,8 +73,15 @@ export function ConversionPanel({
         const updatedJob = await response.json();
         onConversionUpdated(updatedJob);
         
+        if (updatedJob.status === "completed") {
+          setConversionError(null);
+        }
+        
         if (updatedJob.status === "completed" || updatedJob.status === "failed") {
           setIsConverting(false);
+          if (updatedJob.status === "failed") {
+            setConversionError("Conversion failed. The file format may not be supported for this conversion.");
+          }
         }
       } catch (error) {
         console.error("Failed to poll conversion status:", error);
@@ -75,6 +103,7 @@ export function ConversionPanel({
     if (selectedFormats.length === 0 || uploadedFiles.length === 0) return;
 
     setIsConverting(true);
+    setConversionError(null);
     
     try {
       let requestBody: any = {
@@ -104,6 +133,7 @@ export function ConversionPanel({
       onConversionStarted(newJob);
     } catch (error: any) {
       console.error("Conversion failed:", error);
+      setConversionError(extractErrorMessage(error));
       setIsConverting(false);
     }
   };
@@ -181,6 +211,14 @@ export function ConversionPanel({
               }
             </Button>
 
+            {/* Error Display */}
+            {conversionError && (
+              <div className="mt-4 bg-destructive/10 border border-destructive/20 rounded-md p-3 flex items-start gap-2" data-testid="error-banner">
+                <AlertCircle className="text-destructive mt-0.5 flex-shrink-0" size={16} />
+                <p className="text-sm text-destructive">{conversionError}</p>
+              </div>
+            )}
+
             {/* Progress Section */}
             {conversionJob && (conversionJob.status === "processing" || conversionJob.status === "pending") && (
               <div className="mt-4">
@@ -203,7 +241,7 @@ export function ConversionPanel({
               </div>
             )}
 
-            {conversionJob?.status === "failed" && (
+            {conversionJob?.status === "failed" && !conversionError && (
               <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
                 <p className="text-destructive text-sm">Conversion failed. Please try again.</p>
               </div>

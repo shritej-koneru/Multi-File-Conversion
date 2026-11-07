@@ -1,10 +1,10 @@
 services:
-  # Docker deployment (ACTIVE - supports all conversions)
   - type: web
     name: multi-file-conversion
-    runtime: docker
+    runtime: node
     plan: starter
-    dockerfilePath: ./Dockerfile
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -12,18 +12,3 @@ services:
         value: 10000
     healthCheckPath: /health
     autoDeploy: true
-    
-  # Native Node.js deployment (commented out - limited dependency support)
-  # - type: web
-  #   name: multi-file-conversion-native
-  #   runtime: node
-  #   plan: starter
-  #   buildCommand: chmod +x scripts/*.sh && ./scripts/install-all-deps.sh && npm install && npm run build
-  #   startCommand: npm start
-  #   envVars:
-  #     - key: NODE_ENV
-  #       value: production
-  #     - key: PORT
-  #       value: 10000
-  #   healthCheckPath: /health
-  #   autoDeploy: true

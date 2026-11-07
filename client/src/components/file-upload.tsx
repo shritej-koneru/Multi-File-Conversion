@@ -34,6 +34,7 @@ export function FileUpload({ uploadedFiles, onFilesUploaded, onRemoveFile }: Fil
       const response = await apiRequest("POST", "/api/upload", formData);
       const data = await response.json();
 
+      try { sessionStorage.setItem('sessionId', data.sessionId); } catch {}
       onFilesUploaded(data.files, data.sessionId);
     } catch (error: any) {
       setUploadError(error.message || "Upload failed");
@@ -46,18 +47,24 @@ export function FileUpload({ uploadedFiles, onFilesUploaded, onRemoveFile }: Fil
     onDrop,
     maxSize: 50 * 1024 * 1024, // 50MB
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.svg', '.avif'],
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/vnd.ms-powerpoint': ['.ppt'],
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
       'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
+      'text/html': ['.html', '.htm'],
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'video/*': ['.mp4', '.avi'],
-      'audio/*': ['.mp3', '.wav'],
+      'application/json': ['.json'],
+      'text/yaml': ['.yaml', '.yml'],
+      'application/toml': ['.toml'],
+      'text/xml': ['.xml'],
+      'video/*': ['.mp4', '.avi', '.mov', '.webm', '.mkv'],
+      'audio/*': ['.mp3', '.wav', '.ogg', '.m4a', '.aac'],
     }
   });
 
